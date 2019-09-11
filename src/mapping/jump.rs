@@ -72,12 +72,12 @@ pub struct Jump {
 }
 
 impl Jump {
-    pub fn new<T>(initial_level: T, nonjump_adj: &Vec<Vec<usize>>) -> Jump
+    pub fn new<T>(initial_level: T, nonjump_adj: &Vec<Vec<usize>>, num_levels: usize, num_vertices: usize) -> Jump
     where
         T: Iterator<Item = usize>,
     {
         let mut jump = Jump {
-            levelset:            LevelSet::new(),
+            levelset:            LevelSet::new(num_levels, num_vertices),
             last_level:          0,
             nonjump_vertices:    HashSet::new(),
             count_ingoing_jumps: HashMap::new(),
@@ -88,6 +88,9 @@ impl Jump {
             matrix_policy:       MatrixPolicy::Precompute,
             clean_policy:        CleanPolicy::Clean,
         };
+
+		jump.levelset.add_level();
+
 
         // TODO: implement cleaning without matrices
         if jump.matrix_policy == MatrixPolicy::Lazy && jump.clean_policy == CleanPolicy::Clean {
@@ -110,12 +113,6 @@ impl Jump {
         // Init first level
         jump.extend_level(0, nonjump_adj);
 
-        if jump.clean_policy == CleanPolicy::Clean {
-            for &vertex in jump.levelset.get_level(0).unwrap() {
-                jump.count_ingoing_jumps.insert((0, vertex), 0);
-            }
-        }
-
         jump
     }
 
@@ -123,15 +120,17 @@ impl Jump {
     /// current level to the next one and adjacency list of non-jumpable
     /// edges inside the next level.
     pub fn init_next_level(&mut self, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
-        let nonjump_vertices = &self.nonjump_vertices;
+		let nonjump_vertices = &self.nonjump_vertices;
         let levelset = &mut self.levelset;
         let jl = &mut self.jl;
 
         let last_level = self.last_level;
         let next_level = self.last_level + 1;
 
+		levelset.add_level();
+
         // NOTE: this clone is only necessary for the borrow checker.
-        let last_level_vertices = levelset.get_level(last_level).unwrap().clone();
+        let last_level_vertices = levelset.get_level(last_level).clone();
 
         // Register jumpable transitions from this level to the next one
         for source in last_level_vertices {
@@ -168,7 +167,7 @@ impl Jump {
 
         // If at some point the next level is not reached, the output will be empty
         // anyway.
-        if levelset.get_level(next_level) == None {
+        if levelset.get_level(next_level).is_empty() {
             return;
         }
 
@@ -209,7 +208,7 @@ impl Jump {
 
         // NOTE: could convince Rust that the lifetime of this iterator is ok to return
         // a map iterator.
-        let jump_level_vertices = self.levelset.get_level(jump_level).unwrap();
+        let jump_level_vertices = self.levelset.get_level(jump_level);
 
         let gamma2 = jump_level_vertices
             .iter()
@@ -238,7 +237,6 @@ impl Jump {
 
         self.levelset
             .get_level(self.last_level)
-            .unwrap()
             .iter()
             .cloned()
             .collect()
@@ -251,9 +249,9 @@ impl Jump {
     /// Extend current level by reading non-jumpable edges inside the given
     /// level.
     fn extend_level(&mut self, level: usize, nonjump_adj: &Vec<Vec<usize>>) {
-        let levelset = &mut self.levelset;
+		let levelset = &mut self.levelset;
         let nonjump_vertices = &mut self.nonjump_vertices;
-        let old_level = levelset.get_level(level).unwrap().clone();
+        let old_level = levelset.get_level(level).clone();
 
         for source in old_level {
             for &target in &nonjump_adj[source] {
@@ -272,7 +270,7 @@ impl Jump {
         let jl = &self.jl;
         let count_ingoing_jumps = &mut self.count_ingoing_jumps;
 
-        let curr_level = self.levelset.get_level(level).unwrap();
+        let curr_level = self.levelset.get_level(level);
 
         // Build rlevel as the image of current level by jl
         rlevel.insert(
@@ -291,7 +289,7 @@ impl Jump {
         }
 
         // Compute the adjacency between current level and the previous one.
-        let prev_level = self.levelset.get_level(level - 1).unwrap();
+        let prev_level = self.levelset.get_level(level - 1);
         let mut new_reach = Matrix::new(prev_level.len(), curr_level.len());
 
         for &source in prev_level {
