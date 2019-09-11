@@ -64,19 +64,6 @@ impl<'t> IndexedDag<'t> {
             jump.init_next_level(adj_for_char, &closure_for_assignations);
             progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
 
-            // Clean levels at exponential depth
-            if curr_level > 0 {
-                // Highest power of two that divides current level
-                let depth = {
-                    let curr_level = curr_level as i128;
-                    (curr_level & -curr_level) as usize
-                };
-
-                for level in ((curr_level - depth + 1)..=curr_level).rev() {
-                    jump.clean_level(level, &closure_for_assignations);
-                }
-            }
-
             curr_level += 1;
 
             if jump.is_disconnected() {
