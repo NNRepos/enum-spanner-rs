@@ -9,6 +9,7 @@ mod tools;
 extern crate clap;
 extern crate regex as lib_regex;
 extern crate regex_syntax;
+extern crate bit_vec;
 
 use std::fs::File;
 use std::io::prelude::*;

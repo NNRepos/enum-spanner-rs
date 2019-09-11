@@ -64,7 +64,7 @@ pub struct Jump {
     /// For any pair of level `(i, j)` such that i is in the level `rlevel[j]`,
     /// `reach[i, j]` is the accessibility matrix of vertices from level i
     /// to level j.
-    reach: HashMap<(usize, usize), Matrix<bool>>,
+    reach: HashMap<(usize, usize), Matrix>,
 
     /// Various computation parametters
     matrix_policy: MatrixPolicy,
@@ -292,14 +292,14 @@ impl Jump {
 
         // Compute the adjacency between current level and the previous one.
         let prev_level = self.levelset.get_level(level - 1).unwrap();
-        let mut new_reach = Matrix::new(prev_level.len(), curr_level.len(), false);
+        let mut new_reach = Matrix::new(prev_level.len(), curr_level.len());
 
         for &source in prev_level {
             let id_source = self.levelset.get_vertex_index(level - 1, source).unwrap();
 
             for &target in &jump_adj[source] {
                 let id_target = self.levelset.get_vertex_index(level, target).unwrap();
-                *new_reach.at(id_source, id_target) = true;
+                new_reach.set(id_source, id_target, true);
             }
         }
 
@@ -324,202 +324,31 @@ impl Jump {
             reach.remove(&(level - 1, level));
         }
 
-        if self.clean_policy == CleanPolicy::Clean {
-            // Init Jump counters for current level
-            for &vertex in curr_level {
-                count_ingoing_jumps.insert((level, vertex), 0);
-            }
+//        if self.clean_policy == CleanPolicy::Clean {
+//            // Init Jump counters for current level
+//            for &vertex in curr_level {
+//                count_ingoing_jumps.insert((level, vertex), 0);
+//            }
+//
+//            // Update Jump counters to previous levels
+//            for &sublevel in &rlevel[&level] {
+//                let adjacency = &reach[&(sublevel, level)];
 
-            // Update Jump counters to previous levels
-            for &sublevel in &rlevel[&level] {
-                let adjacency = &reach[&(sublevel, level)];
+//                for (vertex, vertex_index) in self.levelset.iter_level(sublevel) {
+//                    let nb_pointers: usize = adjacency
+//                        .iter_row(vertex_index)
+//                        .map(|&x| if x { 1 } else { 0 })
+//                        .sum();
 
-                for (vertex, vertex_index) in self.levelset.iter_level(sublevel) {
-                    let nb_pointers: usize = adjacency
-                        .iter_row(vertex_index)
-                        .map(|&x| if x { 1 } else { 0 })
-                        .sum();
-
-                    if nb_pointers != 0 {
-                        *count_ingoing_jumps.get_mut(&(sublevel, vertex)).unwrap() += nb_pointers;
-                    }
-                }
-            }
-        }
-    }
-
-    /// Remove all useless nodes inside current level. A useless node is a node
-    /// from which there is no path of assignation to a node which can be jumped
-    /// to.
-    pub fn clean_level(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>) -> bool {
-        if self.clean_policy == CleanPolicy::Skip {
-            return false;
-        }
-
-        if level == 0 {
-            // TODO: fix the reach[(0, 0)] exception
-            return false;
-        }
-
-        let curr_level = match self.levelset.get_level(level) {
-            None => return false,
-            Some(vertices) => vertices,
-        };
-
-        // Run over the level and eliminate all path that are not usefull ie. paths that
-        // don't access to a jumpable vertex
-        let mut seen = HashSet::new();
-        let mut del_vertices: HashSet<_> = curr_level.iter().cloned().collect();
-        let lvl_vertices = del_vertices.clone();
-
-        for &start in curr_level {
-            if seen.contains(&start) {
-                continue;
-            }
-
-            let mut heap = vec![(start, vec![start])];
-
-            while let Some((source, mut path)) = heap.pop() {
-                seen.insert(source);
-
-                // If the path can be identified as usefull, remove it from the set of vertices
-                // to delete.
-                let usefull_path = self.count_ingoing_jumps[&(level, source)] > 0
-                    || jump_adj[source].iter().any(|&vertex| {
-                        lvl_vertices.contains(&vertex) && !del_vertices.contains(&vertex)
-                    });
-
-                if usefull_path {
-                    for vertex in &path {
-                        del_vertices.remove(vertex);
-                    }
-
-                    path.clear();
-                }
-
-                for target in &jump_adj[source] {
-                    if lvl_vertices.contains(target) && !seen.contains(target) {
-                        debug_assert!(del_vertices.contains(target));
-                        let mut target_path = path.to_vec();
-                        target_path.push(*target);
-                        heap.push((*target, target_path));
-                    }
-                }
-            }
-        }
-
-        if del_vertices.is_empty() {
-            return false;
-        }
-
-        let removed_columns: Vec<_> = del_vertices
-            .iter()
-            .map(|&vertex| self.levelset.get_vertex_index(level, vertex).unwrap())
-            .collect();
-
-        // Update the levelset and update borrowed value
-        self.levelset.remove_from_level(level, &del_vertices);
-        let default_level = Vec::new();
-        let curr_level = self.levelset.get_level(level).unwrap_or(&default_level);
-
-        for &vertex in &del_vertices {
-            self.jl.remove(&(level, vertex));
-            self.count_ingoing_jumps.remove(&(level, vertex));
-        }
-
-        // Update jump counters to sublevels, if a sublevel is removed from rlevel, then
-        // we need to remove jump pointers from any vertex of the level, overwise only
-        // from removed vertices.
-
-        let new_rlevel: HashSet<_> = curr_level
-            .iter()
-            .filter_map(|&vertex| self.jl.get(&(level, vertex)).cloned())
-            .collect();
-
-        for &sublevel in self.rlevel[&level].difference(&new_rlevel) {
-            for &vertex in self.levelset.get_level(sublevel).unwrap() {
-                let adjacency = &self.reach[&(sublevel, level)];
-                let vertex_index = self.levelset.get_vertex_index(sublevel, vertex).unwrap();
-                let nb_removed: usize = adjacency
-                    .iter_row(vertex_index)
-                    .map(|&val| if val { 1 } else { 0 })
-                    .sum();
-
-                if nb_removed > 0 {
-                    *self
-                        .count_ingoing_jumps
-                        .get_mut(&(sublevel, vertex))
-                        .unwrap() -= nb_removed;
-                }
-            }
-        }
-
-        for &sublevel in &new_rlevel {
-            for &vertex in self.levelset.get_level(sublevel).unwrap() {
-                let adjacency = &self.reach[&(sublevel, level)];
-                let vertex_index = self.levelset.get_vertex_index(sublevel, vertex).unwrap();
-                let nb_removed: usize = removed_columns
-                    .iter()
-                    .map(|&col| if adjacency[(vertex_index, col)] { 1 } else { 0 })
-                    .sum();
-
-                if nb_removed > 0 {
-                    *self
-                        .count_ingoing_jumps
-                        .get_mut(&(sublevel, vertex))
-                        .unwrap() -= nb_removed;
-                }
-            }
-        }
-
-        if !self.levelset.has_level(level) {
-            for &uplevel in &self.rev_rlevel[&level] {
-                self.reach.remove(&(level, uplevel));
-                self.rlevel.get_mut(&uplevel).unwrap().remove(&level);
-            }
-
-            for &sublevel in &self.rlevel[&level] {
-                self.reach.remove(&(sublevel, level));
-                self.rev_rlevel.get_mut(&sublevel).unwrap().remove(&level);
-            }
-
-            self.rlevel.remove(&level);
-            self.rev_rlevel.remove(&level);
-        } else {
-            // Remove deprecated links in reach and rlevel
-            for &sublevel in self.rlevel[&level].difference(&new_rlevel) {
-                self.rev_rlevel.get_mut(&sublevel).unwrap().remove(&level);
-                self.reach.remove(&(sublevel, level));
-            }
-
-            self.rlevel.insert(level, new_rlevel);
-
-            // Update reach
-            for &vertex in &del_vertices {
-                self.count_ingoing_jumps.remove(&(level, vertex));
-            }
-
-            for &uplevel in &self.rev_rlevel[&level] {
-                self.reach.insert(
-                    (level, uplevel),
-                    self.reach[&(level, uplevel)]
-                        .truncate(removed_columns.iter().cloned(), iter::empty()),
-                );
-            }
-
-            for &sublevel in &self.rlevel[&level] {
-                self.reach.insert(
-                    (sublevel, level),
-                    self.reach[&(sublevel, level)]
-                        .truncate(iter::empty(), removed_columns.iter().cloned()),
-                );
-            }
-        }
-
-        true
+//                    if nb_pointers != 0 {
+//                        *count_ingoing_jumps.get_mut(&(sublevel, vertex)).unwrap() += nb_pointers;
+//                    }
+//                }
+//            }
+//        }
     }
 }
-
+    
 impl fmt::Debug for Jump {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for ((level, vertex), count) in self.count_ingoing_jumps.iter() {
