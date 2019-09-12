@@ -9,6 +9,7 @@ clap = "2.33"
 regex = "1"
 regex-syntax = "0.6"
 bit-vec = "0.6.1"
+bit-set = "0.5.1"
 
 [profile.dev]
 opt-level = 3
