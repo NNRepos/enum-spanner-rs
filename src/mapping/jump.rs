@@ -1,6 +1,8 @@
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use bit_vec::BitVec;
+use bit_set::BitSet;
 
 use super::super::matrix::Matrix;
 use super::levelset::LevelSet;
@@ -46,28 +48,21 @@ pub struct Jump {
     /// Last level that was built.
     last_level: usize,
 
-    /// Set of vertices that can't be jumped since it has an ingoing
-    /// non-jumpable edge. NOTE: it may only be required to store it for the
-    /// last level.
-    nonjump_vertices: HashSet<(usize, usize)>,
-    /// Keep track of number of jumps to a given vertex.
-    count_ingoing_jumps: HashMap<(usize, usize), usize>,
+    /// Set of vertices in the last level that can't be jumped since it has an ingoing
+    /// non-jumpable edge.
+    nonjump_vertices: BitSet,
 
     /// Closest level where an assignation is done accessible from any node.
-    jl: HashMap<(usize, usize), usize>,
+    jl: Vec<Vec<usize>>,
 
     /// Set of levels accessible from any level using `jl`.
-    rlevel: HashMap<usize, HashSet<usize>>,
-    /// Reverse of `rlevel`.
-    rev_rlevel: HashMap<usize, HashSet<usize>>,
-    /// For any pair of level `(i, j)` such that i is in the level `rlevel[j]`,
-    /// `reach[i, j]` is the accessibility matrix of vertices from level i
+    rlevel: Vec<Vec<usize>>,
+    /// For any pair of level `(i, j)` such that i at the k-th position in `rlevel[j]`,
+    /// `reach[i][k]` is the accessibility matrix of vertices from level i
     /// to level j.
-    reach: HashMap<(usize, usize), Matrix>,
+    reach: Vec<Vec<Matrix>>,
 
-    /// Various computation parametters
-    matrix_policy: MatrixPolicy,
-    clean_policy: CleanPolicy,
+	num_vertices: usize,
 }
 
 impl Jump {
@@ -78,35 +73,24 @@ impl Jump {
         let mut jump = Jump {
             levelset:            LevelSet::new(num_levels, num_vertices),
             last_level:          0,
-            nonjump_vertices:    HashSet::new(),
-            count_ingoing_jumps: HashMap::new(),
-            jl:                  HashMap::new(),
-            rlevel:              HashMap::new(),
-            rev_rlevel:          HashMap::new(),
-            reach:               HashMap::new(),
-            matrix_policy:       MatrixPolicy::Precompute,
-            clean_policy:        CleanPolicy::Clean,
+            nonjump_vertices:    BitSet::with_capacity(num_vertices),
+//            count_ingoing_jumps: HashMap::new(),
+            jl:                  Vec::with_capacity(num_levels),
+            rlevel:              Vec::with_capacity(num_levels),
+            reach:               Vec::with_capacity(num_levels),
+			num_vertices:		 num_vertices,
         };
 
 		jump.levelset.add_level();
 
 
-        // TODO: implement cleaning without matrices
-        if jump.matrix_policy == MatrixPolicy::Lazy && jump.clean_policy == CleanPolicy::Clean {
-            eprintln!(r"/!\ Can't clean jump levels without precomputed matrices.");
-            jump.clean_policy = CleanPolicy::Skip;
-        }
-
-        jump.rlevel.insert(0, HashSet::new());
-        jump.rev_rlevel.insert(0, HashSet::new());
+        jump.rlevel.push(Vec::new());
+		jump.reach.push(Vec::new());
+		jump.jl.push(vec![0; num_vertices]);
 
         for state in initial_level {
             jump.levelset.register(state, 0);
-            jump.jl.insert((0, state), 0);
-
-            if jump.clean_policy == CleanPolicy::Clean {
-                jump.count_ingoing_jumps.insert((0, state), 0);
-            }
+//            jump.jl[0]].insert((0, state), 0);
         }
 
         // Init first level
@@ -127,40 +111,26 @@ impl Jump {
         let next_level = self.last_level + 1;
 
 		levelset.add_level();
+		jl.push(vec![0;self.num_vertices]);
 
         // NOTE: this clone is only necessary for the borrow checker.
         let last_level_vertices = levelset.get_level(last_level).clone();
 
         // Register jumpable transitions from this level to the next one
         for source in last_level_vertices {
-            // Notice that `source_jl` can be None, however, if it is not in
-            // nonjump_vertices it is sure that it is not None since it was
+            // Notice that `source_jl` can be 0, however, if it is not in
+            // nonjump_vertices it is sure that it is not 0 since it was
             // necessary added by following an atomic transition.
-            let source_jl = jl.get(&(last_level, source)).cloned();
+            let source_jl = jl[last_level][source];
 
             for &target in &jump_adj[source] {
-                // Compute the level target will jump to, depending if there is already an
-                // assigned jump level for target or not.
-                let cmpt_jump_level = |previous_jl| {
-                    if nonjump_vertices.contains(&(last_level, source)) {
-                        last_level
-                    } else {
-                        match previous_jl {
-                            None => source_jl.unwrap(),
-                            Some(previous_jl) => max(source_jl.unwrap(), previous_jl),
-                        }
-                    }
-                };
+		        levelset.register(next_level, target);
 
-                // Update the jump level in a single hashmap access.
-                jl.entry((next_level, target))
-                    .and_modify(|target_jl| {
-                        *target_jl = cmpt_jump_level(Some(*target_jl));
-                    })
-                    .or_insert_with(|| {
-                        levelset.register(next_level, target);
-                        cmpt_jump_level(None)
-                    });
+                if nonjump_vertices.contains(source) {
+	                jl[next_level][target]=last_level;
+				} else {
+                    jl[next_level][target]=max(source_jl, jl[next_level][target]);
+                }
             }
         }
 
@@ -173,9 +143,7 @@ impl Jump {
         // NOTE: isn't there a better way of organizing this?
         self.extend_level(next_level, nonjump_adj);
 
-        if self.matrix_policy == MatrixPolicy::Precompute {
-            self.init_reach(next_level, jump_adj);
-        }
+        self.init_reach(next_level, jump_adj);
 
         self.last_level = next_level;
     }
@@ -194,36 +162,41 @@ impl Jump {
     where
         T: Clone + Iterator<Item = usize>,
     {
+		let jll = &self.jl[level];
         let jump_level = gamma
             .clone()
-            .filter_map(|vertex| self.jl.get(&(level, vertex)))
-            .max();
+            .map(|vertex| jll[vertex])
+            .max().unwrap();
 
-        let jump_level = match jump_level {
-            None => return Some((level, Vec::new())),
-            Some(&lvl) if lvl == level => return Some((level, Vec::new())),
-            Some(&lvl) => lvl,
-        };
+		if jump_level == level {
+			return Some((level, Vec::new()));
+		}
 
-        // NOTE: could convince Rust that the lifetime of this iterator is ok to return
-        // a map iterator.
-        let jump_level_vertices = self.levelset.get_level(jump_level);
+		let mut index = 424242;
 
-        let gamma2 = jump_level_vertices
-            .iter()
-            .enumerate()
-            .filter(|&(l, _)| {
-                // NOTE: Maybe it could be more efficient to compute indices `k` before the
-                // filter.
-                gamma.clone().any(
-                    |source| match self.levelset.get_vertex_index(level, source) {
-                        Some(k) => self.reach[&(jump_level, level)][(l, k)],
-                        None => false,
-                    },
-                )
-            })
-            .map(|(_, target)| *target)
-            .collect();
+		for (i,&x) in self.rlevel[level].iter().enumerate() {
+			if x == jump_level {
+				index = i;
+				break;
+			}
+		}
+
+		let matrix = &self.reach[level][index];
+
+		let jump_level_vertices = self.levelset.get_level(jump_level);
+
+		let mut source_vector = BitVec::from_elem(self.levelset.get_level(level).len(),false);
+
+		for source in gamma {
+			match self.levelset.get_vertex_index(level,source) {
+				Some(x) => source_vector.set(x,true),
+				None => (),
+			};
+		}
+
+		let target_vector = BitSet::from_bit_vec(matrix.col_mul(&source_vector));
+
+		let gamma2: Vec<usize> = target_vector.iter().map(|x| jump_level_vertices[x]).collect();
 
         Some((jump_level, gamma2))
     }
@@ -252,10 +225,12 @@ impl Jump {
         let nonjump_vertices = &mut self.nonjump_vertices;
         let old_level = levelset.get_level(level).clone();
 
+		nonjump_vertices.clear();
+
         for source in old_level {
             for &target in &nonjump_adj[source] {
                 levelset.register(level, target);
-                nonjump_vertices.insert((level, target));
+                nonjump_vertices.insert(target);
             }
         }
     }
@@ -265,26 +240,23 @@ impl Jump {
     fn init_reach(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>) {
         let reach = &mut self.reach;
         let rlevel = &mut self.rlevel;
-        let rev_rlevel = &mut self.rev_rlevel;
-        let jl = &self.jl;
+        let jl = &self.jl[level];
 
         let curr_level = self.levelset.get_level(level);
+
+		reach.push(Vec::new());
 
         // Build rlevel as the image of current level by jl
         rlevel.insert(
             level,
             curr_level
-                .iter()
-                .filter_map(|&source| jl.get(&(level, source)).map(|&target| target))
+                .iter() //.filter_map(|&source| jl.get(&(level, source)).map(|&target| target))
+                .map(|source| jl[*source])
                 .collect(),
         );
 
-        // Update rev_rlevel for sublevels
-        rev_rlevel.insert(level, HashSet::new());
-
-        for sublevel in &rlevel[&level] {
-            rev_rlevel.get_mut(sublevel).unwrap().insert(level);
-        }
+		rlevel[level].sort();
+		rlevel[level].dedup();
 
         // Compute the adjacency between current level and the previous one.
         let prev_level = self.levelset.get_level(level - 1);
@@ -299,58 +271,36 @@ impl Jump {
             }
         }
 
-        reach.insert((level - 1, level), new_reach);
+		let mut new_reach_index = None;
 
         // Compute by a dynamic algorithm the adjacency of current level with all its
         // sublevels.
-        for &sublevel in &rlevel[&level] {
+        for &sublevel in &rlevel[level] {
             // This eliminates the stupid cast of level 0.
             // TODO: fix this hardcoded behaviour.
-            if sublevel >= level - 1 {
-                continue;
+            if sublevel == level - 1 {
+                new_reach_index = Some(reach[level].len());
+				reach[level].push(Matrix::new(1,1));
+				continue
             }
 
-            reach.insert(
-                (sublevel, level),
-                &reach[&(sublevel, level - 1)] * &reach[&(level - 1, level)],
-            );
+			let mut index = 424242;
+
+			for (i,&x) in rlevel[level-1].iter().enumerate() {
+				if x == sublevel {
+					index = i;
+					break;
+				}
+			}
+
+            let new_matrix = &reach[level-1][index] * &new_reach;
+
+            reach[level].push(new_matrix);
         }
 
-        if !rlevel[&level].contains(&(level - 1)) {
-            reach.remove(&(level - 1, level));
-        }
-
-//        if self.clean_policy == CleanPolicy::Clean {
-//            // Init Jump counters for current level
-//            for &vertex in curr_level {
-//                count_ingoing_jumps.insert((level, vertex), 0);
-//            }
-//
-//            // Update Jump counters to previous levels
-//            for &sublevel in &rlevel[&level] {
-//                let adjacency = &reach[&(sublevel, level)];
-
-//                for (vertex, vertex_index) in self.levelset.iter_level(sublevel) {
-//                    let nb_pointers: usize = adjacency
-//                        .iter_row(vertex_index)
-//                        .map(|&x| if x { 1 } else { 0 })
-//                        .sum();
-
-//                    if nb_pointers != 0 {
-//                        *count_ingoing_jumps.get_mut(&(sublevel, vertex)).unwrap() += nb_pointers;
-//                    }
-//                }
-//            }
-//        }
-    }
-}
-    
-impl fmt::Debug for Jump {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for ((level, vertex), count) in self.count_ingoing_jumps.iter() {
-            write!(f, "{} at level {}: {} ingoing jumps", vertex, level, count)?;
-        }
-
-        Ok(())
+		match new_reach_index {
+			Some(nri) => reach[level].insert(nri, new_reach),
+			None => (),
+		};
     }
 }

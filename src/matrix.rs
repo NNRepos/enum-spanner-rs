@@ -60,6 +60,26 @@ impl<'a> Matrix
         debug_assert!(row < self.height);
         row + (col * self.padded_height)
     }
+
+	pub fn col_mul(&self, column: &BitVec) -> BitVec {
+	    let storage_self = self.data.storage();
+		let storage_other = column.storage();
+	    let effective_width = self.padded_width/32;
+
+		let mut result = BitVec::<u32>::from_elem(self.height, false);
+
+		for i in 0..self.height {
+			for k in 0..self.padded_width/32 {
+				if (storage_self[i*effective_width + k] & storage_other[k]) != 0 {
+					result.set(i, true);
+					break;
+				}
+			}
+		}
+
+		result
+	}
+
 }
 
 impl Index<(usize, usize)> for Matrix
