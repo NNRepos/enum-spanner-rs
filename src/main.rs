@@ -4,7 +4,6 @@ mod mapping;
 mod matrix;
 mod progress;
 mod regex;
-mod tools;
 
 extern crate clap;
 extern crate regex as lib_regex;

@@ -1,6 +1,3 @@
-use std::collections::{HashMap, HashSet};
-use std::iter;
-
 /// Represent the partitioning into levels of a product graph.
 ///
 /// A same vertex can be store in several levels, and this level hierarchy can

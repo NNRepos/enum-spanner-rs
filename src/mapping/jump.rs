@@ -1,7 +1,6 @@
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::iter;
 
 use super::super::matrix::Matrix;
 use super::levelset::LevelSet;
@@ -268,7 +267,6 @@ impl Jump {
         let rlevel = &mut self.rlevel;
         let rev_rlevel = &mut self.rev_rlevel;
         let jl = &self.jl;
-        let count_ingoing_jumps = &mut self.count_ingoing_jumps;
 
         let curr_level = self.levelset.get_level(level);
 

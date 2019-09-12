@@ -1,9 +1,5 @@
-use std::fmt;
-use std::iter;
 use std::ops::{Index, Mul};
 use bit_vec::BitVec;
-
-use super::tools::iter_complement;
 
 /// Naive representation of a matrix as a single consecutive chunk of memory.
 pub struct Matrix {

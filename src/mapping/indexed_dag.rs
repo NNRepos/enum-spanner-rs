@@ -60,14 +60,11 @@ impl<'t> IndexedDag<'t> {
         let chars: Vec<_> = text.chars().collect();
         let mut progress = Progress::from_iter(chars.into_iter())
             .auto_refresh(toggle_progress == ToggleProgress::Enabled);
-        let mut curr_level = 0;
 
         while let Some(curr_char) = progress.next() {
             let adj_for_char = automaton.get_adj_for_char(curr_char);
             jump.init_next_level(adj_for_char, &closure_for_assignations);
             progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
-
-            curr_level += 1;
 
             if jump.is_disconnected() {
                 break;
@@ -108,7 +105,7 @@ impl<'t> IndexedDag<'t> {
         while let Some(source) = stack.pop() {
             for (label, target) in &adj[source] {
 				let label_id = label.get_marker().unwrap().get_id();
-				if (!k.contains(label_id)) {
+				if !k.contains(label_id) {
                     expected_markers.push(&label.get_marker().unwrap());
                     k.insert(label_id);
 				}
@@ -369,7 +366,7 @@ impl<'a> Iterator for NextLevelIterator<'a> {
 			markers.push(marker);
 
             for source in gamma {
-				for (label, target) in &adj[source] {
+				for (_, target) in &adj[source] {
                     gamma2.push(*target);
                 }
 			}
