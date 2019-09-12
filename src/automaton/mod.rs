@@ -228,6 +228,13 @@ impl Label {
             Label::Atom(_) => Err("Can't get a marker out of an atom label."),
         }
     }
+
+	pub fn get_id(&self) -> usize {
+		match self {
+			Label::Assignation(marker) => marker.get_id(),
+            Label::Atom(_) => 0,
+		}
+	}
 }
 
 impl fmt::Display for Label {

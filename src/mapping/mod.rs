@@ -139,18 +139,22 @@ impl<'t> fmt::Display for Mapping<'t> {
 
 #[derive(Clone, Debug, PartialOrd, Ord)]
 pub struct Variable {
-    id:   u64,
+    id:   usize,
     name: String,
 }
 
 impl Variable {
-    pub fn new(name: String, id: u64) -> Variable {
+    pub fn new(name: String, id: usize) -> Variable {
         Variable { id, name }
     }
 
     pub fn get_name(&self) -> &str {
         &self.name
     }
+
+	pub fn get_id(&self) -> usize {
+		self.id
+	}
 }
 
 impl Hash for Variable {
@@ -190,6 +194,13 @@ impl Marker {
             Marker::Open(var) | Marker::Close(var) => var,
         }
     }
+
+	pub fn get_id(&self) -> usize {
+		match self {
+			Marker::Open(var) => var.get_id()*2,
+			Marker::Close(var) => var.get_id()*2+1,
+		}
+	}
 }
 
 impl fmt::Debug for Marker {

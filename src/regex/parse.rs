@@ -42,7 +42,7 @@ impl Hir {
     /// It also takes as an input the counter of already created variables and
     /// return the count of variables that have been created in the generated
     /// Hir.
-    fn from_lib_hir(hir: regex_syntax::hir::Hir, nb_ext_vars: u64) -> (u64, Hir) {
+    fn from_lib_hir(hir: regex_syntax::hir::Hir, nb_ext_vars: usize) -> (usize, Hir) {
         match hir.into_kind() {
             LibHir::Empty => (0, Hir::epsilon()),
 
