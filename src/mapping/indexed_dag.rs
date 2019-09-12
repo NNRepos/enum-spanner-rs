@@ -5,6 +5,7 @@ use super::super::automaton::Automaton;
 use super::super::mapping::{Mapping, Marker};
 use super::super::progress::Progress;
 use super::jump::Jump;
+use bit_set::BitSet;
 
 //  ___           _                   _ ____
 // |_ _|_ __   __| | _____  _____  __| |  _ \  __ _  __ _
@@ -95,9 +96,10 @@ impl<'t> IndexedDag<'t> {
         // Get list of variables that are part of the level.
         // UODO: It might still be slower to just using the list of all variables in the
         // automaton?
-        let mut k = HashSet::new();
+        let mut k = BitSet::new();
+		let mut expected_markers = Vec::<&'a Marker>::new();
         let mut stack = gamma.clone();
-        let mut marks = HashSet::new();
+        let mut marks = BitSet::new();
 
         for &x in &gamma {
             marks.insert(x);
@@ -105,16 +107,20 @@ impl<'t> IndexedDag<'t> {
 
         while let Some(source) = stack.pop() {
             for (label, target) in &adj[source] {
-                k.insert(label.get_marker().unwrap());
+				let label_id = label.get_marker().unwrap().get_id();
+				if (!k.contains(label_id)) {
+                    expected_markers.push(&label.get_marker().unwrap());
+                    k.insert(label_id);
+				}
 
-                if !marks.contains(target) {
+                if !marks.contains(*target) {
                     marks.insert(*target);
                     stack.push(*target);
                 }
             }
         }
 
-        NextLevelIterator::explore(&self.automaton, k, gamma)
+        NextLevelIterator::explore(&self.automaton, expected_markers, gamma)
     }
 }
 
@@ -239,7 +245,13 @@ struct NextLevelIterator<'a> {
     gamma: Vec<usize>,
 
     /// The current state of the iterator
-    stack: Vec<(HashSet<&'a Marker>, HashSet<&'a Marker>)>,
+    stack: Vec<(BitSet, BitSet, Vec<&'a Marker>)>,
+
+	/// finished enumerating
+	done: bool,
+
+	/// the only partial mapping to return is the empty one
+	almost_done: bool,
 }
 
 impl<'a> NextLevelIterator<'a> {
@@ -248,30 +260,34 @@ impl<'a> NextLevelIterator<'a> {
         NextLevelIterator {
             stack: Vec::new(), // Initialized with an empty stack to stop iteration instantly.
             automaton,
-            expected_markers: Vec::default(),
+            expected_markers: Vec::new(),
             gamma: Vec::default(),
+			done: true,
+			almost_done: true,
         }
     }
 
     /// Start the exporation from the input set of states `gamma`.
     fn explore(
         automaton: &'a Automaton,
-        expected_markers: HashSet<&'a Marker>,
+        expected_markers: Vec<&'a Marker>,
         gamma: Vec<usize>,
     ) -> NextLevelIterator<'a> {
         NextLevelIterator {
             automaton,
-            expected_markers: expected_markers.into_iter().collect(),
+            expected_markers: expected_markers.clone(),
             gamma,
-            stack: vec![(HashSet::new(), HashSet::new())],
+            stack: vec![(BitSet::new(), BitSet::new(), Vec::new())],
+			done: false,
+			almost_done: false,
         }
     }
 
     fn follow_sp_sm(
         &self,
         gamma: &Vec<usize>,
-        s_p: &HashSet<&Marker>,
-        s_m: &HashSet<&Marker>,
+        s_p: &BitSet,
+        s_m: &BitSet,
     ) -> Vec<usize> {
         let adj = self.automaton.get_rev_assignations();
         let mut path_set: HashMap<usize, Option<HashSet<_>>> = HashMap::new();
@@ -284,14 +300,14 @@ impl<'a> NextLevelIterator<'a> {
         let are_incomparable =
             |set1: &HashSet<_>, set2: &HashSet<_>| !set1.is_subset(&set2) && !set2.is_subset(&set1);
 
-        // TODO: Consider writing this as a recursive function?
+        // states 
         let mut queue: VecDeque<_> = gamma.iter().cloned().collect();
 
         while let Some(source) = queue.pop_front() {
             for (label, target) in &adj[source] {
                 let label = label.get_marker().unwrap();
 
-                if s_m.contains(label) {
+                if s_m.contains(label.get_id()) {
                     continue;
                 }
 
@@ -301,8 +317,8 @@ impl<'a> NextLevelIterator<'a> {
 
                 let mut new_ps = path_set[&source].clone().unwrap();
 
-                if s_p.contains(label) {
-                    new_ps.insert(label);
+                if s_p.contains(label.get_id()) {
+                    new_ps.insert(label.get_id());
                 }
 
                 path_set
@@ -331,10 +347,40 @@ impl<'a> NextLevelIterator<'a> {
 }
 
 impl<'a> Iterator for NextLevelIterator<'a> {
-    type Item = (HashSet<&'a Marker>, Vec<usize>);
+    type Item = (Vec<&'a Marker>, Vec<usize>);
 
-    fn next(&mut self) -> Option<(HashSet<&'a Marker>, Vec<usize>)> {
-        while let Some((mut s_p, mut s_m)) = self.stack.pop() {
+    fn next(&mut self) -> Option<(Vec<&'a Marker>, Vec<usize>)> {
+		if self.done {
+			return None
+		}
+
+		if self.almost_done || self.expected_markers.is_empty() {
+			self.done = true;
+			return Some((Vec::new(),self.gamma.clone()))
+		}
+
+		if self.expected_markers.len()==1 {
+			let mut markers = Vec::new();
+	        let adj = self.automaton.get_rev_assignations();
+			let mut gamma2 = Vec::new();
+			let marker = self.expected_markers[0];
+			let gamma = self.gamma.clone();
+
+			markers.push(marker);
+
+            for source in gamma {
+				for (label, target) in &adj[source] {
+                    gamma2.push(*target);
+                }
+			}
+
+			self.almost_done = true;
+
+			return Some((markers, gamma2))
+		}
+
+
+        while let Some((mut s_p, mut s_m, mut markers)) = self.stack.pop() {
             let mut gamma2 = Some(self.follow_sp_sm(&self.gamma, &s_p, &s_m));
 
             if gamma2.as_ref().unwrap().is_empty() {
@@ -343,21 +389,27 @@ impl<'a> Iterator for NextLevelIterator<'a> {
 
             while s_p.len() + s_m.len() < self.expected_markers.len() {
                 let depth = s_p.len() + s_m.len();
-                s_p.insert(self.expected_markers[depth]);
+				let next_marker = self.expected_markers[depth].get_id();
+                s_p.insert(next_marker);
                 gamma2 = Some(self.follow_sp_sm(&self.gamma, &s_p, &s_m));
+
 
                 if !gamma2.as_ref().unwrap().is_empty() {
                     // If current pair Sp/Sm is feasible, add the other branch
                     // to the stack.
                     let mut new_s_p = s_p.clone();
                     let mut new_s_m = s_m.clone();
-                    new_s_m.insert(self.expected_markers[depth]);
-                    new_s_p.remove(self.expected_markers[depth]);
-                    self.stack.push((new_s_p, new_s_m));
+                    new_s_m.insert(next_marker);
+                    new_s_p.remove(next_marker);
+					let new_markers = markers.clone();
+                    self.stack.push((new_s_p, new_s_m, new_markers));
+
+					//only modify after unmodified markers is pushed to the stack
+					markers.push(&self.expected_markers[depth]);
                 } else {
                     // Overwise, the other branch has to be feasible.
-                    s_p.remove(self.expected_markers[depth]);
-                    s_m.insert(self.expected_markers[depth]);
+                    s_p.remove(next_marker);
+                    s_m.insert(next_marker);
                     gamma2 = None;
                 }
             }
@@ -367,7 +419,7 @@ impl<'a> Iterator for NextLevelIterator<'a> {
                 Some(val) => val,
             };
 
-            return Some((s_p, gamma2));
+            return Some((markers, gamma2));
         }
 
         None
