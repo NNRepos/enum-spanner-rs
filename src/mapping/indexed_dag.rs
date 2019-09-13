@@ -71,6 +71,44 @@ impl<'t> IndexedDag<'t> {
             }
         }
 
+//		println!("Levelset: {:#?}", jump);
+		
+
+		if !jump.is_disconnected() {
+			jump.trim_last_level(&automaton.finals, &closure_for_assignations);
+
+//		println!("Levelset: {:#?}", jump);
+			
+			let chars: Vec<_> = text.chars().collect();
+			let nb_levels = chars.len();
+			let mut level = nb_levels;
+	        let mut progress = Progress::from_iter(chars.into_iter().rev())
+   	        .auto_refresh(toggle_progress == ToggleProgress::Enabled);
+
+            while let Some(curr_char) = progress.next() {
+                let adj_for_char = automaton.get_adj_for_char(curr_char);
+                jump.trim_level(level, adj_for_char, &closure_for_assignations);
+                level -= 1;
+                progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
+            }
+
+//		println!("Levelset: {:#?}", jump);
+
+        let chars: Vec<_> = text.chars().collect();
+        let mut progress = Progress::from_iter(chars.into_iter())
+            .auto_refresh(toggle_progress == ToggleProgress::Enabled);
+		let mut level = 1;
+
+        	while let Some(curr_char) = progress.next() {
+            	let adj_for_char = automaton.get_adj_for_char(curr_char);
+            	jump.init_reach(level, adj_for_char);
+            	progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
+				level+=1;
+	        }
+		}
+
+//		println!("Levelset: {:#?}", jump);
+
         IndexedDag {
             automaton,
             text,

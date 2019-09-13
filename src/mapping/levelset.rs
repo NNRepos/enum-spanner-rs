@@ -54,6 +54,11 @@ impl LevelSet {
 		
 		vertices
 	} 
+	
+	/// Used to trim the graph. Will change indices for the level.
+	pub fn keep_only(&mut self, level: usize, vertices: &BitSet) {
+		self.levels[level].intersect_with(vertices);
+	}
 
 	
 	pub fn vertices_to_indices(&self, level: usize, vertices: &BitSet) -> BitSet{
@@ -101,10 +106,6 @@ impl LevelSet {
 		self.levels[level].insert(vertex);
     }
 
-    /// Remove a set of vertices from a level
-    pub fn remove_from_level(&mut self, level: usize, del_vertices: BitSet) {
-//	 	self.levels[level].remove(vertex);
-    }
 
 	pub fn add_level(&mut self) {
 		self.levels.push(BitSet::with_capacity(self.num_vertices));
