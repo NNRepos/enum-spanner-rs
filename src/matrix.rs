@@ -1,5 +1,6 @@
 use std::ops::{Index, Mul};
 use bit_vec::BitVec;
+use std::fmt;
 
 /// Naive representation of a matrix as a single consecutive chunk of memory.
 pub struct Matrix {
@@ -141,3 +142,21 @@ impl Mul for &Matrix {
 //    }
 //}
 
+
+impl fmt::Debug for Matrix {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		writeln!(f,"");
+		for i in 0..self.height {
+			for j in 0..self.width {
+				let bit = match self[(i,j)] {
+					false => ".",
+					true => "x",
+				};
+				write!(f, "{}", bit); 
+			}
+			writeln!(f,"");
+		}
+		writeln!(f,"")
+    }
+
+}

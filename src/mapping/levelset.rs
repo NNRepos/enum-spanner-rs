@@ -1,3 +1,5 @@
+use bit_set::BitSet;
+
 /// Represent the partitioning into levels of a product graph.
 ///
 /// A same vertex can be store in several levels, and this level hierarchy can
@@ -7,13 +9,8 @@ pub struct LevelSet {
 	num_vertices: usize,
 	
     /// Index level contents: `level id` -> `vertex id's list`.
-	levels: Vec<Vec<usize>>,
+	levels: Vec<BitSet>,
 
-    /// Index the id of a vertex iner to a level:
-    ///     `(level id, vertex id)` -> `vertex position`.
-    /// It can also be used to check if a pair `(level, vertex)` is already
-    /// represented in the structure.
-	vertex_index: Vec<Vec<usize>>,
 }
 
 impl LevelSet {
@@ -21,7 +18,7 @@ impl LevelSet {
         LevelSet {
 			num_vertices,
             levels:       Vec::with_capacity(num_levels),
-            vertex_index: Vec::new(),
+//            vertex_index: Vec::new(),
         }
     }
 
@@ -29,7 +26,7 @@ impl LevelSet {
         (self.levels.len() > level) && (self.levels[level].len()>0)
     }
 
-    pub fn get_level(&self, level: usize) -> &Vec<usize> {
+    pub fn get_level(&self, level: usize) -> &BitSet {
         &self.levels[level]
     }
 
@@ -37,41 +34,80 @@ impl LevelSet {
         self.levels.len()
     }
 
-    pub fn get_vertex_index(&self, level: usize, vertex: usize) -> Option<usize> {
-        match self.vertex_index[level][vertex] {
-		std::usize::MAX => None,
-		_ => Some(self.vertex_index[level][vertex])
-		}		
+	pub fn indices_to_vertices(&self, level: usize, indices: &BitSet) -> BitSet {
+		let mut vertices = BitSet::with_capacity(self.num_vertices);
+		let level_clone = &self.levels[level].clone();
+		let mut level_iter = level_clone.iter();
 
-    }
+		let mut last = 0;
+		
+		for i in indices.iter() {
+			let mut diff = i - last;
+			while (diff>0) {
+				level_iter.next();
+				diff-=1;
+			}
+			
+			vertices.insert(level_iter.next().unwrap());
+			last = i + 1;
+		}
+		
+		vertices
+	} 
 
-//    /// Iterate over pairs (vertex, vertex_index) of a level
-//    pub fn iter_level<'a>(&'a self, level: usize) -> impl Iterator<Item = (usize, usize)> + 'a {
-//        let vertices = self.levels[&level].iter();
-//        let levels = iter::repeat(level);
-//
-//        levels
-//            .zip(vertices)
-//            .map(move |(level, &vertex)| (vertex, self.vertex_index[&(level, vertex)]))
-//    }
+	
+	pub fn vertices_to_indices(&self, level: usize, vertices: &BitSet) -> BitSet{
+//		print!("v_to_i({}): level: ", level);
+		let mut count = 0;
+		let mut indices = BitSet::with_capacity(self.levels[level].len());
+		
+//		let lc = &self.levels[level].clone();
+//		for l in lc.iter() {
+//			print!("{} ", l);
+//		}
+		
+//		print!("vertices: ");
+		
+		let level_clone = &self.levels[level].clone();
+		let mut level_iter = level_clone.iter();
+		let mut x = level_iter.next().unwrap_or(std::usize::MAX);
+		
+		for v in vertices.iter() {
+//			print!("{} ",v);
+			while (x<v) {
+				x = level_iter.next().unwrap_or(std::usize::MAX);
+				count+=1;
+			}
+			if (x==v) {
+				indices.insert(count);
+			}
+		}
+
+//		print!("indices: ");		
+		
+//		for i in indices.iter() {
+//			print!("{} ", i);
+//		}
+
+//		println!("");
+		
+		indices
+	}
+
 
     /// Save a vertex in a level, the vertex need to be unique inside this level
     /// but can be registered in other levels.
     pub fn register(&mut self, level: usize, vertex: usize) {
-		if self.vertex_index[level][vertex]==std::usize::MAX {
-			self.vertex_index[level][vertex]=self.levels[level].len();
-			self.levels[level].push(vertex);
-		}
+		self.levels[level].insert(vertex);
     }
 
-    /// Remove a set of vertices from a level, if the level is left empty, it is
-    /// then removed.
-    //pub fn remove_from_level(&mut self, level: usize, del_vertices: &HashSet<usize>) {
-	// TODO
-    //}
+    /// Remove a set of vertices from a level
+    pub fn remove_from_level(&mut self, level: usize, del_vertices: BitSet) {
+//	 	self.levels[level].remove(vertex);
+    }
 
 	pub fn add_level(&mut self) {
-		self.levels.push(Vec::with_capacity(self.num_vertices));
-		self.vertex_index.push(vec![std::usize::MAX; self.num_vertices]);
+		self.levels.push(BitSet::with_capacity(self.num_vertices));
 	}
 }
+

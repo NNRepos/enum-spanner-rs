@@ -5,6 +5,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::rc::Rc;
+use bit_set::BitSet;
 
 use super::mapping::Marker;
 
@@ -18,7 +19,7 @@ use super::mapping::Marker;
 pub struct Automaton {
     pub nb_states:   usize,
     pub transitions: Vec<(usize, Rc<Label>, usize)>,
-    pub finals:      HashSet<usize>,
+    pub finals:      BitSet,
 
     // Redundant caching structures
     adj: Vec<Vec<(Rc<Label>, usize)>>,

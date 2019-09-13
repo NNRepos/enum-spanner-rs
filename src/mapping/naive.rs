@@ -66,7 +66,7 @@ impl<'a, 't> Iterator for NaiveEnum<'a, 't> {
                 }
             }
 
-            if curr_char == None && self.automaton.finals.contains(&state) {
+            if curr_char == None && self.automaton.finals.contains(state) {
                 let mapping = Mapping::from_markers(
                     self.text,
                     assigns

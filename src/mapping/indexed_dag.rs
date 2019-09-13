@@ -87,7 +87,7 @@ impl<'t> IndexedDag<'t> {
         self.jump.get_nb_levels()
     }
 
-    fn next_level<'a>(&'a self, gamma: Vec<usize>) -> NextLevelIterator<'a> {
+    fn next_level<'a>(&'a self, gamma: BitSet) -> NextLevelIterator<'a> {
         let adj = self.automaton.get_rev_assignations();
 
         // Get list of variables that are part of the level.
@@ -95,27 +95,25 @@ impl<'t> IndexedDag<'t> {
         // automaton?
         let mut k = BitSet::new();
 		let mut expected_markers = Vec::<&'a Marker>::new();
-        let mut stack = gamma.clone();
-        let mut marks = BitSet::new();
+        let mut states = gamma.clone();
+    	let mut new_states = gamma.clone();
 
-        for &x in &gamma {
-            marks.insert(x);
-        }
 
-        while let Some(source) = stack.pop() {
-            for (label, target) in &adj[source] {
+		while !new_states.is_empty() {
+			let source=new_states.iter().next().unwrap();
+			new_states.remove(source);
+           	for (label, target) in &adj[source] {
 				let label_id = label.get_marker().unwrap().get_id();
 				if !k.contains(label_id) {
-                    expected_markers.push(&label.get_marker().unwrap());
-                    k.insert(label_id);
+                   	expected_markers.push(&label.get_marker().unwrap());
+                   	k.insert(label_id);
 				}
-
-                if !marks.contains(*target) {
-                    marks.insert(*target);
-                    stack.push(*target);
-                }
-            }
-        }
+				if !states.contains(*target) {
+           			states.insert(*target);
+					new_states.insert(*target);
+				}
+           	}
+		}
 
         NextLevelIterator::explore(&self.automaton, expected_markers, gamma)
     }
@@ -135,7 +133,7 @@ impl<'t> IndexedDag<'t> {
 
 struct IndexedDagIterator<'i, 't> {
     indexed_dag: &'i IndexedDag<'t>,
-    stack:       Vec<(usize, Vec<usize>, Vec<(&'i Marker, usize)>)>,
+    stack:       Vec<(usize, BitSet, Vec<(&'i Marker, usize)>)>,
 
     curr_level:      usize,
     curr_mapping:    Vec<(&'i Marker, usize)>,
@@ -144,12 +142,10 @@ struct IndexedDagIterator<'i, 't> {
 
 impl<'i, 't> IndexedDagIterator<'i, 't> {
     fn init(indexed_dag: &'i IndexedDag<'t>) -> IndexedDagIterator<'i, 't> {
-        let start = indexed_dag
+        let mut start = indexed_dag
             .jump
-            .finals()
-            .intersection(&indexed_dag.automaton.finals.iter().map(|x| *x).collect())
-            .map(|x| *x)
-            .collect();
+            .finals().clone();
+		start.intersect_with(&indexed_dag.automaton.finals);
 
         IndexedDagIterator {
             indexed_dag,
@@ -175,13 +171,22 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                     continue;
                 }
 
+//				print!("NLI output: ");
+//				for m in s_p.iter() {
+//					print!("{} ", m);
+//				}
+//				for q in new_gamma.iter() {
+//					print!{"q{} ", q};
+//				}
+//				println!("");
+
                 let mut new_mapping = self.curr_mapping.clone();
                 for marker in s_p {
                     new_mapping.push((marker, self.curr_level));
                 }
 
                 if self.curr_level == 0
-                    && new_gamma.contains(&self.indexed_dag.automaton.get_initial())
+                    && new_gamma.contains(self.indexed_dag.automaton.get_initial())
                 {
                     // Re-align level indexes with utf8 coding
                     let aligned_markers = new_mapping
@@ -196,7 +201,7 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                 } else if let Some((jump_level, jump_gamma)) = self
                     .indexed_dag
                     .jump
-                    .jump(self.curr_level, new_gamma.into_iter())
+                    .jump(self.curr_level, new_gamma)
                 {
                     if !jump_gamma.is_empty() {
                         self.stack.push((jump_level, jump_gamma, new_mapping));
@@ -239,7 +244,7 @@ struct NextLevelIterator<'a> {
     expected_markers: Vec<&'a Marker>,
 
     /// Set of states we start the run from.
-    gamma: Vec<usize>,
+    gamma: BitSet,
 
     /// The current state of the iterator
     stack: Vec<(BitSet, BitSet, Vec<&'a Marker>)>,
@@ -258,7 +263,7 @@ impl<'a> NextLevelIterator<'a> {
             stack: Vec::new(), // Initialized with an empty stack to stop iteration instantly.
             automaton,
             expected_markers: Vec::new(),
-            gamma: Vec::default(),
+            gamma: BitSet::new(),
 			done: true,
 			almost_done: true,
         }
@@ -268,11 +273,11 @@ impl<'a> NextLevelIterator<'a> {
     fn explore(
         automaton: &'a Automaton,
         expected_markers: Vec<&'a Marker>,
-        gamma: Vec<usize>,
+        gamma: BitSet,
     ) -> NextLevelIterator<'a> {
         NextLevelIterator {
             automaton,
-            expected_markers: expected_markers.clone(),
+            expected_markers: expected_markers.into_iter().collect(),
             gamma,
             stack: vec![(BitSet::new(), BitSet::new(), Vec::new())],
 			done: false,
@@ -282,23 +287,23 @@ impl<'a> NextLevelIterator<'a> {
 
     fn follow_sp_sm(
         &self,
-        gamma: &Vec<usize>,
+        gamma: &BitSet,
         s_p: &BitSet,
         s_m: &BitSet,
-    ) -> Vec<usize> {
+    ) -> BitSet {
         let adj = self.automaton.get_rev_assignations();
-        let mut path_set: HashMap<usize, Option<HashSet<_>>> = HashMap::new();
+        let mut path_set: HashMap<usize, Option<BitSet>> = HashMap::new();
 
-        for &state in gamma {
-            path_set.insert(state, Some(HashSet::new()));
+        for state in gamma.iter() {
+            path_set.insert(state, Some(BitSet::new()));
         }
 
         // Check if two sets are incomparable
         let are_incomparable =
-            |set1: &HashSet<_>, set2: &HashSet<_>| !set1.is_subset(&set2) && !set2.is_subset(&set1);
+            |set1: &BitSet, set2: &BitSet| !set1.is_subset(&set2) && !set2.is_subset(&set1);
 
         // states 
-        let mut queue: VecDeque<_> = gamma.iter().cloned().collect();
+        let mut queue: VecDeque<_> = gamma.iter().collect();
 
         while let Some(source) = queue.pop_front() {
             for (label, target) in &adj[source] {
@@ -344,9 +349,9 @@ impl<'a> NextLevelIterator<'a> {
 }
 
 impl<'a> Iterator for NextLevelIterator<'a> {
-    type Item = (Vec<&'a Marker>, Vec<usize>);
+    type Item = (Vec<&'a Marker>, BitSet);
 
-    fn next(&mut self) -> Option<(Vec<&'a Marker>, Vec<usize>)> {
+    fn next(&mut self) -> Option<(Vec<&'a Marker>, BitSet)> {
 		if self.done {
 			return None
 		}
@@ -359,15 +364,15 @@ impl<'a> Iterator for NextLevelIterator<'a> {
 		if self.expected_markers.len()==1 {
 			let mut markers = Vec::new();
 	        let adj = self.automaton.get_rev_assignations();
-			let mut gamma2 = Vec::new();
+			let mut gamma2 = BitSet::new();
 			let marker = self.expected_markers[0];
 			let gamma = self.gamma.clone();
 
 			markers.push(marker);
 
-            for source in gamma {
+            for source in gamma.iter() {
 				for (_, target) in &adj[source] {
-                    gamma2.push(*target);
+                    gamma2.insert(*target);
                 }
 			}
 

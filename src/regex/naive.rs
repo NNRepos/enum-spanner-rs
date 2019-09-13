@@ -125,7 +125,7 @@ impl<'t> Iterator for NaiveEnumQuadratic<'t> {
                     .automaton
                     .finals
                     .iter()
-                    .any(|&state| self.curr_states[state]);
+                    .any(|state| self.curr_states[state]);
 
                 // Read transitions and updates states in consequence
                 let nb_states = self.automaton.nb_states;
