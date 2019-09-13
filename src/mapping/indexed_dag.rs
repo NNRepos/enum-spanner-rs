@@ -51,6 +51,7 @@ impl<'t> IndexedDag<'t> {
         let mut jump = Jump::new(
             iter::once(automaton.get_initial()),
             automaton.get_closure_for_assignations(),
+			automaton.get_jump_states(),
 			text.len() + 1,
 			automaton.get_nb_states()
         );

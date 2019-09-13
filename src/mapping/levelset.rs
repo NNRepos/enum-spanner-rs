@@ -1,10 +1,10 @@
 use bit_set::BitSet;
+use std::fmt;
 
 /// Represent the partitioning into levels of a product graph.
 ///
 /// A same vertex can be store in several levels, and this level hierarchy can
 /// be accessed rather efficiently.
-#[derive(Debug)]
 pub struct LevelSet {
 	num_vertices: usize,
 	
@@ -111,4 +111,15 @@ impl LevelSet {
 		self.levels.push(BitSet::with_capacity(self.num_vertices));
 	}
 }
+
+impl fmt::Debug for LevelSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (level, vertices) in self.levels.iter().enumerate() {
+            writeln!(f,"level {}: {:?}",level,vertices);
+        }
+
+        writeln!(f,"")
+    }
+}
+
 

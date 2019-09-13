@@ -27,6 +27,7 @@ pub struct Automaton {
     assignations: Vec<Vec<(Rc<Label>, usize)>>,
     rev_assignations: Vec<Vec<(Rc<Label>, usize)>>,
     closure_for_assignations: Vec<Vec<usize>>,
+	jump_states: BitSet,
 }
 
 impl Automaton {
@@ -45,12 +46,14 @@ impl Automaton {
             assignations: Vec::new(),
             rev_assignations: Vec::new(),
             closure_for_assignations: Vec::new(),
+			jump_states: BitSet::new(),
         };
 
         automaton.adj = automaton.init_adj();
         automaton.rev_assignations = automaton.init_rev_assignations();
         automaton.assignations = automaton.init_assignations();
         automaton.closure_for_assignations = automaton.init_closure_for_assignations();
+		automaton.jump_states = automaton.init_jump_states();
 
         automaton
     }
@@ -207,6 +210,17 @@ impl Automaton {
 
         closure
     }
+
+	pub fn get_jump_states(&self) -> &BitSet {
+		&self.jump_states
+	} 
+	
+	fn init_jump_states(&self) -> BitSet {
+		self.transitions.clone().into_iter().filter_map(|(_,l,q)| match *l {
+			Label::Assignation(_) => Some(q),
+			Label::Atom(_) => None
+		}).collect::<BitSet>()
+	}
 }
 
 //  _          _          _
