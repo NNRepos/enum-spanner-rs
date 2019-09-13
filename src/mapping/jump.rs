@@ -7,26 +7,6 @@ use bit_set::BitSet;
 use super::super::matrix::Matrix;
 use super::levelset::LevelSet;
 
-//  ____                                _
-// |  _ \ __ _ _ __ __ _ _ __ ___   ___| |_ ___ _ __ ___
-// | |_) / _` | '__/ _` | '_ ` _ \ / _ \ __/ _ \ '__/ __|
-// |  __/ (_| | | | (_| | | | | | |  __/ ||  __/ |  \__ \
-// |_|   \__,_|_|  \__,_|_| |_| |_|\___|\__\___|_|  |___/
-//
-
-/// Define wether the matrices should be computed during the precomputing.
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum MatrixPolicy {
-    Lazy,
-    Precompute,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum CleanPolicy {
-    Clean,
-    Skip,
-}
-
 //      _
 //     | |_   _ _ __ ___  _ __
 //  _  | | | | | '_ ` _ \| '_ \
