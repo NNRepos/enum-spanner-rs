@@ -9,7 +9,6 @@ pub struct Matrix {
     padded_height: usize,
     padded_width:  usize,
     data:   BitVec,
-	transposed_data: BitVec
 }
 
 // Custom trait for matrices that can be right-multiplied by a column vector.
@@ -30,7 +29,6 @@ impl<'a> Matrix
 			padded_height,
 			padded_width,
             data: BitVec::<u32>::from_elem(padded_width*height, false),
-			transposed_data: BitVec::<u32>::from_elem(padded_height*width, false)
         }
     }
 
@@ -45,7 +43,6 @@ impl<'a> Matrix
 
 	pub fn set(&mut self, row: usize, col: usize, value: bool) {
 		self.data.set(self.data_index(row,col), value);
-		self.transposed_data.set(self.data_transposed_index(row,col), value);
 	}
 
     /// Get the index of a cell in the data vector.
@@ -80,6 +77,17 @@ impl<'a> Matrix
 
 		result
 	}
+	
+	pub fn transpose(&self) -> Matrix {
+		let mut result = Matrix::new(self.width, self.height);
+		for i in 0..self.height {
+			for j in 0..self.width {
+				result.set(j,i,self[(i,j)]);
+			}
+		}
+		
+		result
+	}
 
 }
 
@@ -104,21 +112,20 @@ impl Index<(usize, usize)> for Matrix
 // |_|  |_|\__,_|\__|_|  |_/_/\_\
 //
 
+/// Implements multiplication for matrices. The other matric is assumed to be transposed.
 impl Mul for &Matrix {
     type Output = Matrix;
 
     fn mul(self, other: &Matrix) -> Matrix {
-	  let mut result = Matrix::new(self.height, other.width);
+	  let mut result = Matrix::new(self.height, other.height);
 	  let storage_self = self.data.storage();
-	  let storage_other = other.transposed_data.storage();
+	  let storage_other = other.data.storage();
 	  let effective_width = self.padded_width/32;
-      let effective_height = other.padded_height/32;
 
   	  for i in 0..self.height {
-	    for j in 0..other.width {
+	    for j in 0..other.height {
 	      for k in 0..self.padded_width/32 {
-			//println!("mul2: {}, {}, {}", i, j, k);
-	        if (storage_self[i*effective_width + k] & storage_other[j*effective_height+k]) != 0 {
+	        if (storage_self[i*effective_width + k] & storage_other[j*effective_width+k]) != 0 {
 		      result.set(i,j,true);
 			  break;
 	      }

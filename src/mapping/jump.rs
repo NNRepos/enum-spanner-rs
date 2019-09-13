@@ -288,7 +288,7 @@ impl Jump {
         // Compute the adjacency between current level and the previous one.
 		let prev_level_len = self.levelset.get_level(level - 1).len();
         let mut prev_level_iter = self.levelset.get_level(level - 1).iter();
-        let mut new_reach = Matrix::new(prev_level_len, curr_level.len());
+        let mut new_reach = Matrix::new(curr_level.len(), prev_level_len);
 		let mut targets = BitSet::with_capacity(self.num_vertices);
 
         for id_source in 0..prev_level_len {
@@ -299,7 +299,7 @@ impl Jump {
 
 			let ids_target = self.levelset.vertices_to_indices(level,&targets);
 			for id in ids_target.iter() {
-            	new_reach.set(id_source, id, true);
+            	new_reach.set(id, id_source, true);
 			}
 			targets.clear();
         }
@@ -338,7 +338,7 @@ impl Jump {
         }
 
 		match new_reach_index {
-			Some(nri) => reach[level].insert(nri, new_reach),
+			Some(nri) => reach[level].insert(nri, new_reach.transpose()),
 			None => (),
 		};
     }
