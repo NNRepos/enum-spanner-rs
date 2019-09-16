@@ -73,10 +73,11 @@ impl<'t> IndexedDag<'t> {
         }
 
 //		println!("Levelset: {:#?}", jump);
-		
+
+		jump.trim_last_level(&automaton.finals, &closure_for_assignations);
+	
 
 		if !jump.is_disconnected() {
-			jump.trim_last_level(&automaton.finals, &closure_for_assignations);
 
 //		println!("Levelset: {:#?}", jump);
 			

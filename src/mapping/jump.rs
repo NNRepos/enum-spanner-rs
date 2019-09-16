@@ -187,7 +187,7 @@ impl Jump {
 	}
 
     pub fn is_disconnected(&self) -> bool {
-        !self.levelset.has_level(self.last_level)
+        self.levelset.get_level(self.last_level).is_empty()
     }
 
     /// Jump to the next relevant level from vertices in gamma at a given level.
