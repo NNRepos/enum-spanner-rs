@@ -401,13 +401,19 @@ impl fmt::Debug for Jump {
 //		writeln!(f, "JumpLevel: {:?}", self.jl)
 		
 		let mut hist = vec![0;self.num_vertices];
+		let mut hist2 = vec![0;self.num_vertices];
+		let mut num_matrices = 0;
 		
 		for level in 0..self.last_level {
 			hist[self.levelset.get_level(level).len()]+=1;
+			hist2[self.rlevel[level].len()]+=1;
+			num_matrices+=self.rlevel[level].len();
 		}
 
 		writeln!(f,"Level histogramm: {:?}", hist);
+		writeln!(f,"RLevel histogramm: {:?}", hist2);
+		writeln!(f,"num_matrices: {}", num_matrices)
 
-		writeln!(f,"{:?}", self.levelset)
+//		writeln!(f,"{:?}", self.levelset)
     }
 }
