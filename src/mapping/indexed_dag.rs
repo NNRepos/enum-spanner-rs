@@ -65,7 +65,6 @@ impl<'t> IndexedDag<'t> {
         while let Some(curr_char) = progress.next() {
             let adj_for_char = automaton.get_adj_for_char(curr_char);
             jump.init_next_level(adj_for_char, &closure_for_assignations);
-            progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
 
             if jump.is_disconnected() {
                 break;
@@ -91,7 +90,6 @@ impl<'t> IndexedDag<'t> {
                 let adj_for_char = automaton.get_adj_for_char(curr_char);
                 jump.trim_level(level, adj_for_char, &closure_for_assignations);
                 level -= 1;
-                progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
             }
 
 //		println!("Levelset: {:#?}", jump);
@@ -104,7 +102,6 @@ impl<'t> IndexedDag<'t> {
         	while let Some(curr_char) = progress.next() {
             	let adj_for_char = automaton.get_adj_for_char(curr_char);
             	jump.init_reach(level, adj_for_char, &closure_for_assignations);
-            	progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
 				level+=1;
 	        }
 		}
@@ -121,10 +118,6 @@ impl<'t> IndexedDag<'t> {
 
     pub fn iter<'i>(&'i self) -> impl Iterator<Item = Mapping<'t>> + 'i {
         IndexedDagIterator::init(self)
-    }
-
-    pub fn get_nb_levels(&self) -> usize {
-        self.jump.get_nb_levels()
     }
 
     fn next_level<'a>(&'a self, gamma: BitSet) -> NextLevelIterator<'a> {

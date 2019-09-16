@@ -40,10 +40,6 @@ impl LevelSet {
 		BitSet::from_bit_vec(levelset)
     }
 
-    pub fn get_nb_levels(&self) -> usize {
-        self.levels.len()
-    }
-
 	pub fn indices_to_vertices(&self, level: usize, indices: &BitSet) -> BitSet {
 		let mut vertices = BitSet::with_capacity(self.num_vertices);
 		let level_clone = &self.get_level(level);

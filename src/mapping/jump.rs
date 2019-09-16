@@ -212,10 +212,6 @@ impl Jump {
             .get_level(self.last_level).clone()
     }
 
-    pub fn get_nb_levels(&self) -> usize {
-        self.levelset.get_nb_levels()
-    }
-
     /// Extend current level by reading non-jumpable edges inside the given
     /// level.
     fn extend_level(&mut self, level: usize, nonjump_adj: &Vec<Vec<usize>>) {

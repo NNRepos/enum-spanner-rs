@@ -103,9 +103,8 @@ where
 
     write!(
         stream,
-        "{:.2?}\t({} levels)\n",
-        timer.elapsed(),
-        compiled_matches.get_nb_levels()
+        "{:.2?}\n",
+        timer.elapsed()
     )?;
 
     // Enumerate matches.
