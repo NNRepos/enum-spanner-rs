@@ -127,17 +127,6 @@ impl Mul for &Matrix {
     }
 }
 
-//impl ColMul for Matrix {
-//    fn col_mul(&self, column: &Vec<bool>) -> Vec<bool> {
-//        (0..self.height)
-//            .map(|row| {
-//                let row_iter = self.iter_row(row);
-//                let col_iter = column.iter();
-//                row_iter.zip(col_iter).any(|(&x, &y)| x && y)
-//            })
-//            .collect()
-//    }
-//}
 
 
 impl fmt::Debug for Matrix {
