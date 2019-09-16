@@ -1,5 +1,4 @@
 use std::cmp::max;
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 use bit_vec::BitVec;
 use bit_set::BitSet;
