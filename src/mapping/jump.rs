@@ -349,15 +349,10 @@ impl Jump {
 
 //		println!("rlevel[{}].len(): {}", level, rlevel[level].len());
 
-		let mut new_reach_index = None;
-
         // Compute by a dynamic algorithm the adjacency of current level with all its
         // sublevels.
         for &sublevel in &rlevel[level] {
-            // This eliminates the stupid cast of level 0.
-            // TODO: fix this hardcoded behaviour.
             if sublevel == self.reach_level {
-                new_reach_index = Some(reach[level].len());
 				continue
             }
 
@@ -386,10 +381,7 @@ impl Jump {
 		self.reach_level = level;
 
 
-		match new_reach_index {
-			Some(nri) => reach[level].insert(nri, new_reach),
-			None => (),
-		};
+		reach[level].push(new_reach);
     }
 }
 
