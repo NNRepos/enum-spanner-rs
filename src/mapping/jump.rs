@@ -281,7 +281,8 @@ impl Jump {
 
         // Compute the adjacency between current level and the previous one.
 		let prev_level_len = self.levelset.get_level(level - 1).len();
-        let mut prev_level_iter = self.levelset.get_level(level - 1).iter();
+        let mut prev_level = self.levelset.get_level(level - 1);
+		let mut prev_level_iter = prev_level.iter();
         let mut new_reach_t = Matrix::new(curr_level.len(), prev_level_len);
 		let mut targets = BitSet::with_capacity(self.num_vertices);
 
