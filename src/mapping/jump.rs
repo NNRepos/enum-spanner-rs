@@ -1,6 +1,5 @@
 use std::cmp::max;
 use std::fmt;
-use bit_vec::BitVec;
 use bit_set::BitSet;
 
 use super::super::matrix::Matrix;
@@ -220,10 +219,6 @@ impl Jump {
 
 		let matrix = &self.reach[level][index];
 
-		let jump_level_vertices = self.levelset.get_level(jump_level);
-
-		let mut source_vector = BitVec::from_elem(self.levelset.get_level(level).len(),false);
-
 		let gamma_indices = self.levelset.vertices_to_indices(level,&gamma);
 		
 		let gamma2 = self.levelset.indices_to_vertices(jump_level,&BitSet::from_bit_vec(matrix.col_mul(gamma_indices.get_ref())));
@@ -280,7 +275,7 @@ impl Jump {
 
         // Compute the adjacency between current level and the previous one.
 		let prev_level_len = self.levelset.get_level(level - 1).len();
-        let mut prev_level = self.levelset.get_level(level - 1);
+        let prev_level = self.levelset.get_level(level - 1);
 		let mut prev_level_iter = prev_level.iter();
         let mut new_reach_t = Matrix::new(curr_level.len(), prev_level_len);
 		let mut targets = BitSet::with_capacity(self.num_vertices);

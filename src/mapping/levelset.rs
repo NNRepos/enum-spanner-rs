@@ -30,8 +30,8 @@ impl LevelSet {
         let mut levelset = BitVec::from_elem(self.num_vertices,false);
 
 		unsafe {
-			let mut levels_storage = self.levels.storage();
-			let mut level_storage = levelset.storage_mut();
+			let levels_storage = self.levels.storage();
+			let level_storage = levelset.storage_mut();
 			for i in 0..self.effective_level_size {
 				level_storage[i] = levels_storage[level* self.effective_level_size + i];
 			}
@@ -53,7 +53,7 @@ impl LevelSet {
 		
 		for i in indices.iter() {
 			let mut diff = i - last;
-			while (diff>0) {
+			while diff>0 {
 				level_iter.next();
 				diff-=1;
 			}
@@ -71,8 +71,8 @@ impl LevelSet {
 		levelset.intersect_with(vertices);
 
 		unsafe {
-			let mut levels_storage = self.levels.storage_mut();
-			let mut level_storage = levelset.get_ref().storage();
+			let levels_storage = self.levels.storage_mut();
+			let level_storage = levelset.get_ref().storage();
 			for i in 0..self.effective_level_size {
 				levels_storage[level* self.effective_level_size + i] = level_storage[i];
 			}
@@ -98,11 +98,11 @@ impl LevelSet {
 		
 		for v in vertices.iter() {
 //			print!("{} ",v);
-			while (x<v) {
+			while x<v {
 				x = level_iter.next().unwrap_or(std::usize::MAX);
 				count+=1;
 			}
-			if (x==v) {
+			if x==v {
 				indices.insert(count);
 			}
 		}

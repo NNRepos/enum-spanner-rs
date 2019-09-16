@@ -6,7 +6,6 @@ use std::fmt;
 pub struct Matrix {
     height: usize,
     width:  usize,
-    padded_height: usize,
     padded_width:  usize,
     data:   BitVec,
 }
@@ -21,12 +20,10 @@ impl<'a> Matrix
     /// Create a matrix filled with false.
     pub fn new(height: usize, width: usize) -> Matrix {
 		let padded_width = (((width - 1) / 32 ) + 1) * 32; 
-		let padded_height = (((height - 1) / 32 ) + 1) * 32; 
 	
         Matrix {
             width,
             height,
-			padded_height,
 			padded_width,
             data: BitVec::<u32>::from_elem(padded_width*height, false),
         }
@@ -50,13 +47,6 @@ impl<'a> Matrix
         debug_assert!(col < self.width);
         debug_assert!(row < self.height);
         col + (row * self.padded_width)
-    }
-
-    /// Get the index of a cell in the data vector.
-    fn data_transposed_index(&self, row: usize, col: usize) -> usize {
-        debug_assert!(col < self.width);
-        debug_assert!(row < self.height);
-        row + (col * self.padded_height)
     }
 
 	pub fn col_mul(&self, column: &BitVec) -> BitVec {
