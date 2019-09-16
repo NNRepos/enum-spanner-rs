@@ -128,8 +128,8 @@ impl LevelSet {
 
 impl fmt::Debug for LevelSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (level, vertices) in self.levels.iter().enumerate() {
-            writeln!(f,"level {}: {:?}",level,vertices);
+        for level in 0..(self.levels.len()/self.effective_level_size)/32 {
+            writeln!(f,"level {}: {:?}",level,self.get_level(level));
         }
 
         writeln!(f,"")
