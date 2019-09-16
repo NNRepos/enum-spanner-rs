@@ -302,8 +302,7 @@ impl Jump {
 		};
 		
 		// no rlevel will point to this level
-		if false {// }curr_level.is_disjoint(&self.jump_vertices) && (level < self.last_level) {
-			println!("skip init_reach for level {}", level);
+		if curr_level.is_disjoint(&self.jump_vertices) && (level < self.last_level) {
 			self.reach_matrix = new_reach;
 			rlevel.insert(level, Vec::new());
 			return;
