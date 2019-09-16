@@ -91,37 +91,18 @@ impl Jump {
     /// current level to the next one and adjacency list of non-jumpable
     /// edges inside the next level.
     pub fn init_next_level(&mut self, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
-		let nonjump_vertices = &self.nonjump_vertices;
         let levelset = &mut self.levelset;
-        let jl = &mut self.jl;
 
         let last_level = self.last_level;
         let next_level = self.last_level + 1;
-
-		jl.push(vec![std::usize::MAX;self.num_vertices]);
 
         // NOTE: this clone is only necessary for the borrow checker.
         let last_level_vertices = levelset.get_level(last_level).clone();
 
         // Register jumpable transitions from this level to the next one
         for source in last_level_vertices.iter() {
-            // Notice that `source_jl` can be 0, however, if it is not in
-            // nonjump_vertices it is sure that it is not 0 since it was
-            // necessary added by following an atomic transition.
-            let source_jl = jl[last_level][source];
-
             for &target in &jump_adj[source] {
 		        levelset.register(next_level, target);
-
-                if nonjump_vertices.contains(source) {
-	                jl[next_level][target]=last_level;
-				} else {
-					if jl[next_level][target]==std::usize::MAX {
-						jl[next_level][target]=source_jl;
-					} else {
-                    	jl[next_level][target]=max(source_jl, jl[next_level][target]);
-					}
-                }
             }
         }
 
@@ -193,7 +174,8 @@ impl Jump {
     pub fn jump(&self, level: usize, gamma: BitSet) -> Option<(usize, BitSet)>
     {
 		let jll = &self.jl[level];
-        let jump_level = gamma
+		let gamma_indices = self.levelset.vertices_to_indices(level,&gamma);
+        let jump_level = gamma_indices
             .iter()
             .filter_map(|vertex| {if jll[vertex]<std::usize::MAX {Some(jll[vertex])} else {None}})
             .max().unwrap_or(level);
@@ -214,8 +196,6 @@ impl Jump {
 		}
 
 		let matrix = &self.reach[level][index];
-
-		let gamma_indices = self.levelset.vertices_to_indices(level,&gamma);
 		
 		let gamma2 = self.levelset.indices_to_vertices(jump_level,&BitSet::from_bit_vec(matrix.col_mul(gamma_indices.get_ref())));
 		
@@ -240,38 +220,79 @@ impl Jump {
     /// level.
     fn extend_level(&mut self, level: usize, nonjump_adj: &Vec<Vec<usize>>) {
 		let levelset = &mut self.levelset;
-        let nonjump_vertices = &mut self.nonjump_vertices;
         let old_level = levelset.get_level(level).clone();
-
-		nonjump_vertices.clear();
 
         for source in old_level.iter() {
             for &target in &nonjump_adj[source] {
                 levelset.register(level, target);
-                nonjump_vertices.insert(target);
             }
         }
     }
 
     // Compute reach and rlevel, that is the effective jump points to all levels
     // reachable from the current level.
-    pub fn init_reach(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>) {
+    pub fn init_reach(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
 //		println!("init_reach level: {}", level);
 		if level == 0 {
 			return;
 		}
         let reach = &mut self.reach;
         let rlevel = &mut self.rlevel;
-        let jl = &self.jl[level];
 
         let curr_level = self.levelset.get_level(level);
 
 		reach.push(Vec::new());
 
+		let mut new_jl = vec![std::usize::MAX;curr_level.len()];
 
-        // Compute the adjacency between current level and the previous one.
 		let prev_level_len = self.levelset.get_level(level - 1).len();
         let prev_level = self.levelset.get_level(level - 1);
+
+        let mut nonjump_vertices = BitSet::with_capacity(self.num_vertices);
+
+        for source in prev_level.iter() {
+            for &target in &nonjump_adj[source] {
+                nonjump_vertices.insert(target);
+            }
+        }
+
+		let mut t_to_i = vec![std::usize::MAX; self.num_vertices];
+		
+		for (i,q) in curr_level.iter().enumerate() {
+			t_to_i[q]=i;
+		}
+
+
+        // Register jumpable transitions from this level to the next one
+        for (source_index,source) in prev_level.iter().enumerate() {
+            // Notice that `source_jl` can be 0, however, if it is not in
+            // nonjump_vertices it is sure that it is not 0 since it was
+            // necessary added by following an atomic transition.
+            let source_jl = self.jl[level-1][source_index];
+
+            for &target in &jump_adj[source] {
+				let target_index=t_to_i[target];
+				if target_index!=std::usize::MAX {
+                	if nonjump_vertices.contains(source) {
+	                	new_jl[target_index]=level - 1;
+					} else {
+						if new_jl[target_index]==std::usize::MAX {
+							new_jl[target_index]=source_jl;
+						} else {
+                    		new_jl[target_index]=max(source_jl, new_jl[target_index]);
+						}
+					}
+                }
+            }
+        }
+
+//		println!("Jump levels for level {}: {:?}", level, new_jl);
+
+		self.jl.push(new_jl);
+
+
+
+        // Compute the adjacency between current level and the previous one.
 		let mut prev_level_iter = prev_level.iter();
         let mut new_reach_t = Matrix::new(curr_level.len(), prev_level_len);
 		let mut targets = BitSet::with_capacity(self.num_vertices);
@@ -309,25 +330,18 @@ impl Jump {
 			new_reach_t = new_reach.transpose();
 		} 
 
+		let mut rlev = self.jl[level].clone();
 
-
-
-        // Build rlevel as the image of current level by jl
-        rlevel.insert(
-            level,
-            curr_level
-                .iter() //.filter_map(|&source| jl.get(&(level, source)).map(|&target| target))
-                .map(|source| jl[source])
-                .collect(),
-        );
-
-		rlevel[level].sort();
-		rlevel[level].dedup();
+		rlev.sort();
+		rlev.dedup();
 		
-		if rlevel[level][rlevel[level].len()-1]==std::usize::MAX {
-			rlevel[level].pop();
+		if rlev[rlev.len()-1]==std::usize::MAX {
+			rlev.pop();
 		}
+		
+		rlevel.push(rlev);
 
+//		println!("rlevel[{}].len(): {}", level, rlevel[level].len());
 
 		let mut new_reach_index = None;
 
@@ -351,12 +365,14 @@ impl Jump {
 			}
 			
 			if index == std::usize::MAX {
-				continue;
+				panic!("Index not found for sublevel {} in rlevel[{}] level: {}", sublevel, self.reach_level, level);
 			}
 
 //			println!("sublevel: {}  index: {}", sublevel, index);
 
             let new_matrix = &reach[self.reach_level][index] * &new_reach_t;
+
+//			println!("Compute matrix ({},{}) insert at index {}", sublevel, level, reach[level].len() );
 
             reach[level].push(new_matrix);
         }

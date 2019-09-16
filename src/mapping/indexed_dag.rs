@@ -103,7 +103,7 @@ impl<'t> IndexedDag<'t> {
 
         	while let Some(curr_char) = progress.next() {
             	let adj_for_char = automaton.get_adj_for_char(curr_char);
-            	jump.init_reach(level, adj_for_char);
+            	jump.init_reach(level, adj_for_char, &closure_for_assignations);
             	progress.extra_msg(format!("{} levels", jump.get_nb_levels()));
 				level+=1;
 	        }
