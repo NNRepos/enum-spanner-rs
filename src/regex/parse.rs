@@ -66,10 +66,16 @@ impl Hir {
                 let new_hir = match group.kind {
                     LibGroup::NonCapturing | LibGroup::CaptureIndex(_) => subtree,
                     LibGroup::CaptureName { name, index: _ } => {
-                        let var = Rc::new(Variable::new(name, nb_ext_vars + nb_in_vars));
+						let number = if name == "match" {
+							0
+						} else {
+							nb_in_vars += 1;
+							nb_ext_vars + nb_in_vars
+						};
+						
+                        let var = Rc::new(Variable::new(name, number));
                         let marker_open = Label::Assignation(Marker::Open(var.clone()));
                         let marker_close = Label::Assignation(Marker::Close(var));
-                        nb_in_vars += 1;
 
                         Hir::concat(
                             Hir::Concat(Box::new(Hir::label(marker_open)), Box::new(subtree)),

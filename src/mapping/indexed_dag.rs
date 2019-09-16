@@ -213,14 +213,16 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
 //				}
 //				println!("");
 
+				let mut finished = false;
                 let mut new_mapping = self.curr_mapping.clone();
                 for marker in s_p {
                     new_mapping.push((marker, self.curr_level));
+					if marker.get_id()==0 {
+						finished = true;
+					}
                 }
 
-                if self.curr_level == 0
-                    && new_gamma.contains(self.indexed_dag.automaton.get_initial())
-                {
+                if finished {
                     // Re-align level indexes with utf8 coding
                     let aligned_markers = new_mapping
                         .into_iter()
