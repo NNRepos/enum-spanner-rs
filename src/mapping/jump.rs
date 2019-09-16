@@ -72,9 +72,6 @@ impl Jump {
 			reach_level:		 0,
         };
 
-		jump.levelset.add_level();
-
-
         jump.rlevel.push(Vec::new());
 		jump.reach.push(Vec::new());
 		jump.jl.push(vec![0; num_vertices]);
@@ -101,7 +98,6 @@ impl Jump {
         let last_level = self.last_level;
         let next_level = self.last_level + 1;
 
-		levelset.add_level();
 		jl.push(vec![std::usize::MAX;self.num_vertices]);
 
         // NOTE: this clone is only necessary for the borrow checker.
