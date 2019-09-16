@@ -174,7 +174,7 @@ impl Jump {
     pub fn jump(&self, level: usize, gamma: BitSet) -> Option<(usize, BitSet)>
     {
 		let jll = &self.jl[level];
-		let gamma_indices = self.levelset.vertices_to_indices(level,&gamma);
+		let mut gamma_indices = self.levelset.vertices_to_indices(level,&gamma);
         let jump_level = gamma_indices
             .iter()
             .filter_map(|vertex| {if jll[vertex]<std::usize::MAX {Some(jll[vertex])} else {None}})
@@ -184,20 +184,30 @@ impl Jump {
 			return Some((level, BitSet::new()));
 		}
 
-		let mut index = 424242;
+		let mut current_level = level;
 		
 //		println!("level: {}   jump_level: {}", level, jump_level);
 
-		for (i,&x) in self.rlevel[level].iter().enumerate() {
-			if x == jump_level {
-				index = i;
-				break;
-			}
-		}
+		while current_level>jump_level {
+			let mut next_level = current_level;
+			let mut index = 0;
 
-		let matrix = &self.reach[level][index];
+			for &x in self.rlevel[current_level].iter() {
+				if x < jump_level {
+					index += 1 ;
+				} else {
+					next_level = x; 
+					break;
+				}
+			}
+
+			let matrix = &self.reach[current_level][index];
+			gamma_indices = BitSet::from_bit_vec(matrix.col_mul(gamma_indices.get_ref()));
+			
+			current_level = next_level;
+		}	
 		
-		let gamma2 = self.levelset.indices_to_vertices(jump_level,&BitSet::from_bit_vec(matrix.col_mul(gamma_indices.get_ref())));
+		let gamma2 = self.levelset.indices_to_vertices(jump_level,&gamma_indices);
 		
         Some((jump_level, gamma2))
     }
