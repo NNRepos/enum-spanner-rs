@@ -51,10 +51,18 @@ pub struct Jump {
 	/// init_reach was called on. Is empty if i==j.
 	reach_matrix: Matrix,
 	reach_level: usize,
+	
+	/// distance between jump targets
+	jump_distance: usize,
+	
+	/// The levels that are valid jump targets  
+	jump_levels: BitSet,
+	
+	last_jump_level: usize,
 }
 
 impl Jump {
-    pub fn new<T>(initial_level: T, nonjump_adj: &Vec<Vec<usize>>, jump_vertices: &BitSet, num_levels: usize, num_vertices: usize) -> Jump
+    pub fn new<T>(initial_level: T, nonjump_adj: &Vec<Vec<usize>>, jump_vertices: &BitSet, num_levels: usize, num_vertices: usize, jump_distance: usize) -> Jump
     where
         T: Iterator<Item = usize>,
     {
@@ -69,12 +77,20 @@ impl Jump {
             reach:               Vec::with_capacity(num_levels),
 			num_vertices:		 num_vertices,
 			reach_matrix:		 Matrix::new(1,1),
-			reach_level:		 0,
+			reach_level:         0,
+			jump_distance:       jump_distance,
+			last_jump_level:     0,
+			jump_levels:         if jump_distance==1 {
+				                     BitSet::default()
+                                 } else {
+                                     BitSet::with_capacity(num_levels)	
+			                     },
         };
 
         jump.rlevel.push(Vec::new());
 		jump.reach.push(Vec::new());
 		jump.jl.push(vec![0; num_vertices]);
+		jump.jump_levels.insert(0);
 
         for state in initial_level {
             jump.levelset.register(state, 0);
@@ -344,6 +360,17 @@ impl Jump {
 		if rlev[rlev.len()-1]==std::usize::MAX {
 			rlev.pop();
 		}
+						
+		if (level < self.last_jump_level + self.jump_distance) {
+		} else {
+			self.last_jump_level = level;
+			self.jump_levels.insert(level);
+		}
+
+		let last = rlev[rlev.len()-1];
+		let jump_levels = &self.jump_levels;
+
+		rlev.retain(|&x| (x==last) || (jump_levels.contains(x)));
 		
 		rlevel.push(rlev);
 

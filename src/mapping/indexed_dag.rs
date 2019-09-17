@@ -38,6 +38,7 @@ impl<'t> IndexedDag<'t> {
         mut automaton: Automaton,
         text: &str,
         toggle_progress: ToggleProgress,
+		jump_distance: usize,
     ) -> IndexedDag {
         // Index utf8 chars, the ith char being represented by
         // `text[char_offsets[i]..char_offsets[i+1]]`
@@ -53,7 +54,8 @@ impl<'t> IndexedDag<'t> {
             automaton.get_closure_for_assignations(),
 			automaton.get_jump_states(),
 			text.len() + 1,
-			automaton.get_nb_states()
+			automaton.get_nb_states(),
+			jump_distance,
         );
 
         let closure_for_assignations = automaton.get_closure_for_assignations().clone();

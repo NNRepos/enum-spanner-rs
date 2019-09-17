@@ -92,6 +92,15 @@ fn main() {
                 .long("debug-infos")
                 .help("Display debuging infos"),
         )
+		.arg(
+			Arg::with_name("jump_distance")
+			    .long("jump-distance")
+                .short("j")
+                .takes_value(true)
+                .help("Distance between jump target. This affects the number of matrices computed and \
+                       is a trade-off between pre-processing and enumeration time. Bigger values mean \
+                       faster preprocessing and possibly slower enumeration."),
+		)
         .get_matches();
 
     // Extract parameters
@@ -106,6 +115,17 @@ fn main() {
     let use_naive_quadratic = matches.is_present("use_naive_quadratic");
 
     let debug_infos = matches.is_present("debug_infos");
+
+    let jump_distance_str = matches.value_of("jump_distance");
+    let jump_distance = match jump_distance_str {
+	    None => 1,
+        Some(s) => {
+	        match s.parse::<usize>() {
+		        Ok(n) => n,
+                Err(_) => panic!("Not a number: {}", s),
+	        }
+        }
+    };
 
     let display_format = match (count, compare_format, show_offset) {
         (true, _, _) => DisplayFormat::Count,
@@ -235,7 +255,7 @@ fn main() {
         );
     } else {
         handle_matches(
-            regex::compile_matches_progress(regex, &text).iter(),
+            regex::compile_matches_progress(regex, &text, jump_distance).iter(),
             &text,
             &timer,
             display_format,

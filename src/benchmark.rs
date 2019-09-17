@@ -99,7 +99,7 @@ where
     stream.flush()?;
     let timer = Instant::now();
 
-    let compiled_matches = regex::compile_matches(regex, &input);
+    let compiled_matches = regex::compile_matches(regex, &input, 1);
 
     write!(
         stream,
