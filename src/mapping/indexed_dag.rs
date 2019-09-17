@@ -325,61 +325,56 @@ impl<'a> NextLevelIterator<'a> {
         s_m: &BitSet,
     ) -> BitSet {
         let adj = self.automaton.get_rev_assignations();
-        let mut path_set: HashMap<usize, Option<BitSet>> = HashMap::new();
+		let num_states = self.automaton.get_nb_states();
+		let mut path_set: Vec<i32> = vec![-1; num_states];
+		let mut queue: Vec<_> = gamma.iter().map(|x| (x,0)).collect();
 
-        for state in gamma.iter() {
-            path_set.insert(state, Some(BitSet::new()));
-        }
+//		println!("follow_sp_sm({:?},{:?},{:?}): ", gamma, s_p, s_m);
 
-        // Check if two sets are incomparable
-        let are_incomparable =
-            |set1: &BitSet, set2: &BitSet| !set1.is_subset(&set2) && !set2.is_subset(&set1);
-
-        // states 
-        let mut queue: VecDeque<_> = gamma.iter().collect();
-
-        while let Some(source) = queue.pop_front() {
+		while let Some((source,num_labels)) = queue.pop() {
+//			println!("looking at ({},{})", source,num_labels);
+			if path_set[source]>=num_labels {
+				// we enumerate states in descending order and all (reverse) label-transitions are
+				// from larger ids to smaller ids. Thus there is nothing to gain here.
+				continue;
+			} 
+			
+			path_set[source] = num_labels;
+			
             for (label, target) in &adj[source] {
-                let label = label.get_marker().unwrap();
-
-                if s_m.contains(label.get_id()) {
-                    continue;
-                }
-
-                if !path_set.contains_key(target) {
-                    queue.push_back(*target);
-                }
-
-                let mut new_ps = path_set[&source].clone().unwrap();
-
-                if s_p.contains(label.get_id()) {
-                    new_ps.insert(label.get_id());
-                }
-
-                path_set
-                    .entry(*target)
-                    .and_modify(|entry| {
-                        if let Some(old_ps) = entry {
-                            if are_incomparable(&new_ps, old_ps) {
-                                *entry = None;
-                            } else {
-                                *entry = Some(new_ps.clone());
-                            }
-                        }
-                    })
-                    .or_insert(Some(new_ps));
-            }
-        }
-
-        path_set
-            .iter()
-            .filter_map(|(vertex, vertex_ps)| match vertex_ps {
-                Some(vertex_ps) if vertex_ps.len() == s_p.len() => Some(*vertex),
-                _ => None,
-            })
-            .collect()
-    }
+                let label = label.get_marker().unwrap().get_id();
+				
+				if s_m.contains(label) || (path_set[*target]>num_labels) {
+					continue;
+				}
+				
+				if s_p.contains(label) {
+					queue.push((*target,num_labels+1));
+//					println!("found label {} to target {}", label, target);
+				} else {
+					if path_set[*target] < num_labels {
+//						println!("found non-sp label {} to target {}", label, target);
+						queue.push((*target,num_labels));
+					}
+				}
+			}			
+		}
+		
+		let num_labels_expected = s_p.len();
+		
+//		println!("path_set: {:?}", path_set);
+		
+		let result = path_set.iter().enumerate().filter_map(|(vertex,num_labels)| match num_labels {
+			&num if num>=num_labels_expected as i32 => Some(vertex),
+			_ => None,
+		}).collect();
+		
+//		println!("{:?}", result);
+		
+		result
+	}
 }
+
 
 impl<'a> Iterator for NextLevelIterator<'a> {
     type Item = (Vec<&'a Marker>, BitSet);
