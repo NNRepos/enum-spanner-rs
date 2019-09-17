@@ -161,6 +161,9 @@ impl Automaton {
 
         for (source, label, target) in &self.transitions {
             if let Label::Assignation(_) = **label {
+				if source > target {
+					panic!("Source must be smaller then target in transition ({},{},{})", source, label, target);
+				}
                 adj[*source].push((label.clone(), *target))
             }
         }
