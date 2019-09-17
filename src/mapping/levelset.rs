@@ -68,7 +68,7 @@ impl LevelSet {
 		let mut temp_indices = self.temp_levelset.borrow_mut();
 		temp_indices.clone_from(indices);
 		indices.clear();
-		let mut vertices = indices; 
+		let vertices = indices; 
         self.set_temp(level);
 		let level_vec = &self.temp_level.borrow();
 		let mut level_iter = level_vec.iter().enumerate().filter(|&(_,x)| x==true);
@@ -106,13 +106,13 @@ impl LevelSet {
 		let mut temp_vertices = self.temp_levelset.borrow_mut();
 		temp_vertices.clone_from(vertices);
 		vertices.clear();
-		let mut indices = vertices;
+		let indices = vertices;
 		let mut count = 0;
 	
         self.set_temp(level);
 		let level_vec = &self.temp_level.borrow();
         let mut vertex=0;
-		let mut level_iter = level_vec.iter().map(|x| {if (x) {count+=1} count});
+		let mut level_iter = level_vec.iter().map(|x| {if x {count+=1} count});
 		
 		let mut cnt = level_iter.next().unwrap();
 		

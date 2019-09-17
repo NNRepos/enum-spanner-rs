@@ -56,7 +56,7 @@ impl<'a> Matrix
 	    let effective_width = self.padded_width/32;
 
 		column.clear();
-		let mut result = column;
+		let result = column;
 		
 
 		for i in 0..self.height {

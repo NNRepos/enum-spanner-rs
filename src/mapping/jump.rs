@@ -361,7 +361,7 @@ impl Jump {
 			rlev.pop();
 		}
 						
-		if (level < self.last_jump_level + self.jump_distance) {
+		if level < self.last_jump_level + self.jump_distance {
 		} else {
 			self.last_jump_level = level;
 			self.jump_levels.insert(level);
