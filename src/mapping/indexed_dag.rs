@@ -199,7 +199,7 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
     fn next(&mut self) -> Option<Mapping<'t>> {
         loop {
             // First, consume curr_next_level.
-            while let Some((s_p, new_gamma)) = self.curr_next_level.next() {
+            while let Some((s_p, mut new_gamma)) = self.curr_next_level.next() {
                 if new_gamma.is_empty() {
                     continue;
                 }
@@ -233,14 +233,12 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                         self.indexed_dag.text,
                         aligned_markers,
                     ));
-                } else if let Some((jump_level, jump_gamma)) = self
+                } else if let Some(jump_level) = self
                     .indexed_dag
                     .jump
-                    .jump(self.curr_level, new_gamma)
+                    .jump(self.curr_level, &mut new_gamma)
                 {
-                    if !jump_gamma.is_empty() {
-                        self.stack.push((jump_level, jump_gamma, new_mapping));
-                    }
+	                self.stack.push((jump_level, new_gamma, new_mapping));
                 }
             }
 

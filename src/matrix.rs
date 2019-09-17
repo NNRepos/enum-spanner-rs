@@ -1,6 +1,8 @@
 use std::ops::{Index, Mul};
 use bit_vec::BitVec;
+use bit_set::BitSet;
 use std::fmt;
+use std::cell::RefCell;
 
 /// Naive representation of a matrix as a single consecutive chunk of memory.
 pub struct Matrix {
@@ -8,11 +10,7 @@ pub struct Matrix {
     width:  usize,
     padded_width:  usize,
     data:   BitVec,
-}
-
-// Custom trait for matrices that can be right-multiplied by a column vector.
-pub trait ColMul {
-    fn col_mul(&self, column: &Vec<bool>) -> Vec<bool>;
+	temp_column: RefCell<BitVec>,
 }
 
 impl<'a> Matrix
@@ -26,6 +24,7 @@ impl<'a> Matrix
             height,
 			padded_width,
             data: BitVec::<u32>::from_elem(padded_width*height, false),
+			temp_column: RefCell::new(BitVec::<u32>::from_elem(padded_width, false)),
         }
     }
 
@@ -49,23 +48,25 @@ impl<'a> Matrix
         col + (row * self.padded_width)
     }
 
-	pub fn col_mul(&self, column: &BitVec) -> BitVec {
+	pub fn col_mul_inplace(&self, column: &mut BitSet) {
+		let mut temp_column = self.temp_column.borrow_mut();
+		temp_column.clone_from(column.get_ref());
 	    let storage_self = self.data.storage();
-		let storage_other = column.storage();
+		let storage_other = temp_column.storage();
 	    let effective_width = self.padded_width/32;
 
-		let mut result = BitVec::<u32>::from_elem(self.height, false);
+		column.clear();
+		let mut result = column;
+		
 
 		for i in 0..self.height {
 			for k in 0..self.padded_width/32 {
 				if (storage_self[i*effective_width + k] & storage_other[k]) != 0 {
-					result.set(i, true);
+					result.insert(i);
 					break;
 				}
 			}
 		}
-
-		result
 	}
 	
 	pub fn transpose(&self) -> Matrix {

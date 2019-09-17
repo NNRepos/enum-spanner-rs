@@ -2,6 +2,9 @@ use bit_set::BitSet;
 use bit_vec::BitVec;
 use std::fmt;
 
+use std::cell::RefCell;
+use std::cell::Cell;
+
 /// Represent the partitioning into levels of a product graph.
 ///
 /// A same vertex can be store in several levels, and this level hierarchy can
@@ -11,6 +14,9 @@ pub struct LevelSet {
 	effective_level_size: usize,
     /// Index level contents: `level id` -> `vertex id's list`.
 	levels: BitVec,
+	temp_level: RefCell<BitVec>,
+	temp_level_no: Cell<usize>,
+	temp_levelset: RefCell<BitSet>,
 
 }
 
@@ -22,7 +28,9 @@ impl LevelSet {
 			num_vertices,
 			effective_level_size,
             levels:       BitVec::<u32>::from_elem(effective_level_size*32*num_levels, false),
-//            vertex_index: Vec::new(),
+			temp_level: RefCell::new(BitVec::from_elem(effective_level_size*32, false)),
+			temp_level_no: Cell::new(0),
+			temp_levelset: RefCell::new(BitSet::with_capacity(num_vertices)),
         }
     }
 
@@ -40,25 +48,43 @@ impl LevelSet {
 		BitSet::from_bit_vec(levelset)
     }
 
-	pub fn indices_to_vertices(&self, level: usize, indices: &BitSet) -> BitSet {
-		let mut vertices = BitSet::with_capacity(self.num_vertices);
-		let level_clone = &self.get_level(level);
-		let mut level_iter = level_clone.iter();
+	fn set_temp(&self, level: usize) {
+		unsafe {
+
+			if self.temp_level_no.get() != level {
+				let levels_storage = self.levels.storage();
+                let mut temp = self.temp_level.borrow_mut();
+				let temp_storage = temp.storage_mut();
+
+				self.temp_level_no.set(level);
+				for i in 0..self.effective_level_size {
+					temp_storage[i] = levels_storage[level* self.effective_level_size + i];
+				}
+			}
+		}
+	}
+
+	pub fn indices_to_vertices(&self, level: usize, indices: &mut BitSet) {
+		let mut temp_indices = self.temp_levelset.borrow_mut();
+		temp_indices.clone_from(indices);
+		indices.clear();
+		let mut vertices = indices; 
+        self.set_temp(level);
+		let level_vec = &self.temp_level.borrow();
+		let mut level_iter = level_vec.iter().enumerate().filter(|&(_,x)| x==true);
 
 		let mut last = 0;
 		
-		for i in indices.iter() {
+		for i in temp_indices.iter() {
 			let mut diff = i - last;
 			while diff>0 {
 				level_iter.next();
 				diff-=1;
 			}
 			
-			vertices.insert(level_iter.next().unwrap());
+			vertices.insert(level_iter.next().unwrap().0);
 			last = i + 1;
 		}
-		
-		vertices
 	} 
 	
 	/// Used to trim the graph. Will change indices for the level.
@@ -76,42 +102,29 @@ impl LevelSet {
 	}
 
 	
-	pub fn vertices_to_indices(&self, level: usize, vertices: &BitSet) -> BitSet{
-//		print!("v_to_i({}): level: ", level);
+	pub fn vertices_to_indices(&self, level: usize, vertices: &mut BitSet){
+		let mut temp_vertices = self.temp_levelset.borrow_mut();
+		temp_vertices.clone_from(vertices);
+		vertices.clear();
+		let mut indices = vertices;
 		let mut count = 0;
-		let mut indices = BitSet::with_capacity(self.num_vertices);
+	
+        self.set_temp(level);
+		let level_vec = &self.temp_level.borrow();
+        let mut vertex=0;
+		let mut level_iter = level_vec.iter().map(|x| {if (x) {count+=1} count});
 		
-//		let lc = &self.levels[level].clone();
-//		for l in lc.iter() {
-//			print!("{} ", l);
-//		}
+		let mut cnt = level_iter.next().unwrap();
 		
-//		print!("vertices: ");
-		
-		let level_clone = &self.get_level(level);
-		let mut level_iter = level_clone.iter();
-		let mut x = level_iter.next().unwrap_or(std::usize::MAX);
-		
-		for v in vertices.iter() {
-//			print!("{} ",v);
-			while x<v {
-				x = level_iter.next().unwrap_or(std::usize::MAX);
-				count+=1;
-			}
-			if x==v {
-				indices.insert(count);
+		for v in temp_vertices.iter() {
+			if level_vec.get(v).unwrap() {
+    			while vertex<v {
+                    vertex+=1;
+		    		cnt = level_iter.next().unwrap();
+			    }
+				indices.insert(cnt-1);
 			}
 		}
-
-//		print!("indices: ");		
-		
-//		for i in indices.iter() {
-//			print!("{} ", i);
-//		}
-
-//		println!("");
-		
-		indices
 	}
 
 

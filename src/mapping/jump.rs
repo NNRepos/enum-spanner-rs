@@ -171,17 +171,17 @@ impl Jump {
     ///
     /// NOTE: It may be possible to return an iterator to refs of usize, but the
     /// autoref seems to not do the work.
-    pub fn jump(&self, level: usize, gamma: BitSet) -> Option<(usize, BitSet)>
+    pub fn jump(&self, level: usize, gamma: &mut BitSet) -> Option<usize>
     {
 		let jll = &self.jl[level];
-		let mut gamma_indices = self.levelset.vertices_to_indices(level,&gamma);
-        let jump_level = gamma_indices
+		self.levelset.vertices_to_indices(level,gamma);
+        let jump_level = gamma
             .iter()
             .filter_map(|vertex| {if jll[vertex]<std::usize::MAX {Some(jll[vertex])} else {None}})
             .max().unwrap_or(level);
 
 		if jump_level == level {
-			return Some((level, BitSet::new()));
+			return None;
 		}
 
 		let mut current_level = level;
@@ -202,14 +202,14 @@ impl Jump {
 			}
 
 			let matrix = &self.reach[current_level][index];
-			gamma_indices = BitSet::from_bit_vec(matrix.col_mul(gamma_indices.get_ref()));
+			matrix.col_mul_inplace(gamma);
 			
 			current_level = next_level;
 		}	
 		
-		let gamma2 = self.levelset.indices_to_vertices(jump_level,&gamma_indices);
+		self.levelset.indices_to_vertices(jump_level,gamma);
 		
-        Some((jump_level, gamma2))
+        Some(jump_level)
     }
 
     /// Get the vertices that are in the final layer
@@ -310,8 +310,8 @@ impl Jump {
 				targets.insert(target);
             }
 
-			let ids_target = self.levelset.vertices_to_indices(level,&targets);
-			for id in ids_target.iter() {
+			self.levelset.vertices_to_indices(level,&mut targets);
+			for id in targets.iter() {
             	new_reach_t.set(id, id_source, true);
 			}
 			targets.clear();
