@@ -36,8 +36,9 @@ fn main() {
     //
     let matches = App::new("Enumerate matchings")
         .version("0.1")
-        .author("Rémi Dupré <remi.dupre@ens-paris-saclay.fr>")
-        .about("Enumerate all matches of a regular expression on a text.")
+        .author("Rémi Dupré <remi.dupre@ens-paris-saclay.fr>\n\
+		         Matthias Niewerth <matthias.niewerth@uni-bayreuth.de>")
+        .about("Enumerate all matches of a regular document spanner on a text.")
         .arg(
             Arg::with_name("benchmark")
                 .long("benchmark")
