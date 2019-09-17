@@ -26,11 +26,6 @@ pub struct Jump {
     /// Last level that was built.
     last_level: usize,
 
-    /// Set of vertices in the last level that can't be jumped since it has an ingoing
-    /// non-jumpable edge.
-    nonjump_vertices: BitSet,
-
-
 	/// vertices of the automaton that have an incomping assignment transition
 	jump_vertices: BitSet,
 
@@ -69,7 +64,6 @@ impl Jump {
         let mut jump = Jump {
             levelset:            LevelSet::new(num_levels, num_vertices),
             last_level:          0,
-            nonjump_vertices:    BitSet::with_capacity(num_vertices),
 			jump_vertices:	     jump_vertices.clone(),
 //            count_ingoing_jumps: HashMap::new(),
             jl:                  Vec::with_capacity(num_levels),
