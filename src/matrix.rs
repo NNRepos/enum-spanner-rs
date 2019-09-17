@@ -132,16 +132,16 @@ impl Mul for &Matrix {
 
 impl fmt::Debug for Matrix {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		writeln!(f,"");
+		writeln!(f,"")?;
 		for i in 0..self.height {
 			for j in 0..self.width {
 				let bit = match self[(i,j)] {
 					false => ".",
 					true => "x",
 				};
-				write!(f, "{}", bit); 
+				write!(f, "{}", bit)?; 
 			}
-			writeln!(f,"");
+			writeln!(f,"")?;
 		}
 		writeln!(f,"")
     }

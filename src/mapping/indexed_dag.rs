@@ -1,4 +1,3 @@
-use std::collections::{HashMap, VecDeque};
 use std::iter;
 
 use super::super::automaton::Automaton;

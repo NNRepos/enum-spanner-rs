@@ -423,8 +423,8 @@ impl fmt::Debug for Jump {
 			num_matrices+=self.rlevel[level].len();
 		}
 
-		writeln!(f,"Level histogramm: {:?}", hist);
-		writeln!(f,"RLevel histogramm: {:?}", hist2);
+		writeln!(f,"Level histogramm: {:?}", hist)?;
+		writeln!(f,"RLevel histogramm: {:?}", hist2)?;
 		writeln!(f,"num_matrices: {}", num_matrices)
 
 //		writeln!(f,"{:?}", self.levelset)
