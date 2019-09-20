@@ -16,6 +16,7 @@ use std::io::{stdin, stdout};
 use std::time;
 
 use clap::{App, Arg};
+use mapping::Mapping;
 
 #[derive(PartialEq, Eq)]
 enum DisplayFormat {
@@ -233,35 +234,20 @@ fn main() {
         }
     }
 
-    if use_naive {
-        handle_matches(
-            mapping::naive::NaiveEnum::new(&regex, &text),
-            &text,
-            &timer,
-            display_format,
-        );
+    let mut indexed_dag = Vec::new();
+
+    let iter_matches:Box<Iterator<Item=Mapping>> = if use_naive {
+        Box::new(mapping::naive::NaiveEnum::new(&regex, &text))
     } else if use_naive_cubic {
-        handle_matches(
-            regex::naive::NaiveEnumCubic::new(regex_str, &text).unwrap(),
-            &text,
-            &timer,
-            display_format,
-        );
+        Box::new(regex::naive::NaiveEnumCubic::new(regex_str, &text).unwrap())
     } else if use_naive_quadratic {
-        handle_matches(
-            regex::naive::NaiveEnumQuadratic::new(regex_str, &text),
-            &text,
-            &timer,
-            display_format,
-        );
+        Box::new(regex::naive::NaiveEnumQuadratic::new(regex_str, &text))
     } else {
-        handle_matches(
-            regex::compile_matches_progress(regex, &text, jump_distance).iter(),
-            &text,
-            &timer,
-            display_format,
-        );
-    }
+        indexed_dag.push(regex::compile_matches_progress(regex, &text, jump_distance));
+        Box::new(indexed_dag[0].iter())
+    };
+
+    handle_matches(iter_matches, &text, &timer, display_format);
 
     //  ____       _                   ___        __
     // |  _ \  ___| |__  _   _  __ _  |_ _|_ __  / _| ___  ___
@@ -274,4 +260,6 @@ fn main() {
         eprintln!("===== Debug Infos =====");
         // eprintln!(" - Levels count: {}", compiled_matches.get_nb_levels());
     }
+
+    std::process::exit(0);
 }
