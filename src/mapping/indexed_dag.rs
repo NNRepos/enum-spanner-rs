@@ -385,12 +385,7 @@ impl<'a> Iterator for NextLevelIterator<'a> {
 			return None
 		}
 
-		if self.almost_done || self.expected_markers.is_empty() {
-			self.done = true;
-			return Some((Vec::new(),self.gamma.clone()))
-		}
-
-		if self.expected_markers.len()==1 {
+		if self.almost_done {
 			let mut markers = Vec::new();
 	        let adj = self.automaton.get_rev_assignations();
 			let mut gamma2 = BitSet::new();
@@ -405,9 +400,17 @@ impl<'a> Iterator for NextLevelIterator<'a> {
                 }
 			}
 
-			self.almost_done = true;
+			self.done = true;
 
 			return Some((markers, gamma2))
+		}
+
+		if self.expected_markers.len()<=1 {
+			self.almost_done = true;
+            if self.expected_markers.is_empty() {
+                self.done = true;
+            }
+			return Some((Vec::new(),self.gamma.clone()))
 		}
 
 
@@ -421,17 +424,17 @@ impl<'a> Iterator for NextLevelIterator<'a> {
             while s_p.len() + s_m.len() < self.expected_markers.len() {
                 let depth = s_p.len() + s_m.len();
 				let next_marker = self.expected_markers[depth].get_id();
-                s_p.insert(next_marker);
+                s_m.insert(next_marker);
                 gamma2 = Some(self.follow_sp_sm(&self.gamma, &s_p, &s_m));
 
 
                 if !gamma2.as_ref().unwrap().is_empty() {
                     // If current pair Sp/Sm is feasible, add the other branch
                     // to the stack.
-                    let mut new_s_p = s_p.clone();
                     let mut new_s_m = s_m.clone();
-                    new_s_m.insert(next_marker);
-                    new_s_p.remove(next_marker);
+                    let mut new_s_p = s_p.clone();
+                    new_s_p.insert(next_marker);
+                    new_s_m.remove(next_marker);
 					let new_markers = markers.clone();
                     self.stack.push((new_s_p, new_s_m, new_markers));
 
@@ -439,8 +442,8 @@ impl<'a> Iterator for NextLevelIterator<'a> {
 					markers.push(&self.expected_markers[depth]);
                 } else {
                     // Overwise, the other branch has to be feasible.
-                    s_p.remove(next_marker);
-                    s_m.insert(next_marker);
+                    s_m.remove(next_marker);
+                    s_p.insert(next_marker);
                     gamma2 = None;
                 }
             }
