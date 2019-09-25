@@ -390,7 +390,7 @@ impl<'a> Iterator for NextLevelIterator<'a> {
 	        let adj = self.automaton.get_rev_assignations();
 			let mut gamma2 = BitSet::new();
 			let marker = self.expected_markers[0];
-			let gamma = self.gamma.clone();
+			let gamma = &self.gamma;
 
 			markers.push(marker);
 

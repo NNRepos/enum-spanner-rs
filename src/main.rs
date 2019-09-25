@@ -234,7 +234,7 @@ fn main() {
         }
     }
 
-    let mut indexed_dag = Vec::new();
+    let indexed_dag;
 
     let iter_matches:Box<Iterator<Item=Mapping>> = if use_naive {
         Box::new(mapping::naive::NaiveEnum::new(&regex, &text))
@@ -243,8 +243,8 @@ fn main() {
     } else if use_naive_quadratic {
         Box::new(regex::naive::NaiveEnumQuadratic::new(regex_str, &text))
     } else {
-        indexed_dag.push(regex::compile_matches_progress(regex, &text, jump_distance));
-        Box::new(indexed_dag[0].iter())
+        indexed_dag=regex::compile_matches_progress(regex, &text, jump_distance);
+        Box::new(indexed_dag.iter())
     };
 
     handle_matches(iter_matches, &text, &timer, display_format);
