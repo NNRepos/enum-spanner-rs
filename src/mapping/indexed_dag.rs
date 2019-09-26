@@ -435,15 +435,14 @@ impl<'a> Iterator for NextLevelIterator<'a> {
                     let mut new_s_p = s_p.clone();
                     new_s_p.insert(next_marker);
                     new_s_m.remove(next_marker);
-					let new_markers = markers.clone();
+					let mut new_markers = markers.clone();
+                    new_markers.push(&self.expected_markers[depth]);
                     self.stack.push((new_s_p, new_s_m, new_markers));
-
-					//only modify after unmodified markers is pushed to the stack
-					markers.push(&self.expected_markers[depth]);
                 } else {
                     // Overwise, the other branch has to be feasible.
                     s_m.remove(next_marker);
                     s_p.insert(next_marker);
+                    markers.push(&self.expected_markers[depth]);
                     gamma2 = None;
                 }
             }
