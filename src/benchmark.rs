@@ -44,6 +44,12 @@ where
             filename: "benchmarks/lorem_ipsum.txt",
             regex:    r"(.|\n)+",
         },
+        BenchmarkCase {
+            name:     "Complex DNA",
+            comment:  "Complex DNA query that exploits flashlight search.",
+            filename: "benchmarks/dna.txt",
+            regex:    r"C.{0,15}(?P<x>T).{0,15}(?P<y>G*).{0,15}(?P<z>C).{0,15}A",
+        },
     ];
 
     for benchmark in benchmarks {
@@ -75,7 +81,7 @@ where
     Ok(())
 }
 
-/// Compute time spent on running the regex over the given input file.
+/// get detailed statistics on the delay.
 fn run_test<T>(stream: &mut T, regex: &str, input: String) -> Result<(), std::io::Error>
 where
     T: std::io::Write,
@@ -107,7 +113,7 @@ where
         timer.elapsed()
     )?;
 
-    // Enumerate matches.
+    // Count matches.
     write!(stream, " - Enumerate matches    ... ")?;
     stream.flush()?;
     let timer = Instant::now();
@@ -120,6 +126,64 @@ where
         timer.elapsed(),
         count_matches
     )?;
+    
+    let k=20;
+    let mut delays = Vec::with_capacity(k);
+    // Do k iterations to get rid of outliers
+    for _ in 0..k {
+        let start_time = Instant::now();
+        let mut times = Vec::with_capacity(count_matches);
+        let _ = compiled_matches.iter().map(|x| {
+            times.push(start_time.elapsed().subsec_nanos());
+
+            x
+        }).count();
+
+        let mut last = 0;
+        let delay: Vec<u32> = times.iter().map(|&d| {let mut i = ((d + 1000000000) - last) % 1000000000; last = d; i}).skip(1).collect();
+                    
+        delays.push(delay);
+    }
+
+    let mut iters = Vec::with_capacity(k);
+    for i in &delays {
+        iters.push(i.iter());
+    }
+
+    let mut temp: Vec<u32> = Vec::with_capacity(k);
+
+    let mean_delays: Vec<u32> = (0..count_matches-1).map(|_| {
+        temp.clear();
+        for mut iter in &mut iters {
+            temp.push(*iter.next().unwrap());
+        }
+
+        temp.sort();
+
+        (temp[6] + temp[7] + temp[8] + temp[9] + temp[10] + temp[11])/6
+    }).collect();
+
+    let mean = stats::mean(mean_delays.iter().map(|&x| x));
+    let stddev = stats::stddev(mean_delays.iter().map(|&x| x));
+    let max: usize = *mean_delays.iter().max().unwrap() as usize;
+    let min = mean_delays.iter().min().unwrap();
+    writeln!(stream,"Statistics: {} {} {} {}", min, mean, max, stddev)?;
+    let mut hist = vec![0;max/1000 + 1];
+    for &i in &mean_delays {
+        hist[i as usize/1000]+=1;
+    }
+    
+    writeln!(stream,"Histogramm:\n{:?}", hist)?;
+
+    writeln!(stream,"Outliers:")?;
+
+    for (i,d) in mean_delays.iter().enumerate().filter(|(_,&x)| x>50000) {
+        writeln!(stream,"{} took {} usec", i, d/1000)?;
+    }
 
     Ok(())
 }
+
+
+
+
