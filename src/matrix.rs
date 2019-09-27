@@ -8,7 +8,7 @@ use std::cell::RefCell;
 pub struct Matrix {
     height: usize,
     width:  usize,
-    padded_width:  usize,
+    effective_width:  usize,
     data:   BitVec,
 	temp_column: RefCell<BitVec>,
 }
@@ -17,14 +17,14 @@ impl<'a> Matrix
 {
     /// Create a matrix filled with false.
     pub fn new(height: usize, width: usize) -> Matrix {
-		let padded_width = (((width - 1) / 32 ) + 1) * 32; 
+		let effective_width = (((width - 1) / 32 ) + 1); 
 	
         Matrix {
             width,
             height,
-			padded_width,
-            data: BitVec::<u32>::from_elem(padded_width*height, false),
-			temp_column: RefCell::new(BitVec::<u32>::from_elem(padded_width, false)),
+			effective_width,
+            data: BitVec::<u32>::from_elem(effective_width*height*32, false),
+			temp_column: RefCell::new(BitVec::<u32>::from_elem(effective_width*32, false)),
         }
     }
 
@@ -45,22 +45,23 @@ impl<'a> Matrix
     fn data_index(&self, row: usize, col: usize) -> usize {
         debug_assert!(col < self.width);
         debug_assert!(row < self.height);
-        col + (row * self.padded_width)
+        col + (row * self.effective_width * 32)
     }
 
 	pub fn col_mul_inplace(&self, column: &mut BitSet) {
+//		println!("col_mul: width: {} height: {}, column_height: {}", self.width, self.height, column.capacity());
 		let mut temp_column = self.temp_column.borrow_mut();
 		temp_column.clone_from(column.get_ref());
 	    let storage_self = self.data.storage();
 		let storage_other = temp_column.storage();
-	    let effective_width = self.padded_width/32;
+	    let effective_width = self.effective_width;
 
 		column.clear();
 		let result = column;
 		
 
 		for i in 0..self.height {
-			for k in 0..self.padded_width/32 {
+			for k in 0..std::cmp::min(self.effective_width,storage_other.len()) {
 				if (storage_self[i*effective_width + k] & storage_other[k]) != 0 {
 					result.insert(i);
 					break;
@@ -111,11 +112,11 @@ impl Mul for &Matrix {
 	  let mut result = Matrix::new(self.height, other.height);
 	  let storage_self = self.data.storage();
 	  let storage_other = other.data.storage();
-	  let effective_width = self.padded_width/32;
+	  let effective_width = self.effective_width;
 
   	  for i in 0..self.height {
 	    for j in 0..other.height {
-	      for k in 0..self.padded_width/32 {
+	      for k in 0..self.effective_width {
 	        if (storage_self[i*effective_width + k] & storage_other[j*effective_width+k]) != 0 {
 		      result.set(i,j,true);
 			  break;
