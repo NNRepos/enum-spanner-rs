@@ -95,7 +95,7 @@ impl<'t> Mapping<'t> {
             .into_iter()
             .map(|(key, span)| match span {
                 (Some(i), Some(j)) if i <= j => (key, i..j),
-                _ => panic!("Invalid mapping ordering"),
+                (i,j) => panic!("Invalid mapping ordering for marker {}: {:?} .. {:?}", key, i, j),
             })
             .collect();
 
