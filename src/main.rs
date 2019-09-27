@@ -48,7 +48,7 @@ fn main() {
         .arg(
             Arg::with_name("regex")
                 .help("The pattern to look for.")
-                .required(true),
+                .required_unless("benchmark"),
         )
         .arg(
             Arg::with_name("file")
@@ -108,7 +108,6 @@ fn main() {
     // Extract parameters
     let benchmark = matches.is_present("benchmark");
     let count = matches.is_present("count");
-    let regex_str = matches.value_of("regex").unwrap();
     let show_offset = matches.is_present("bytes_offset");
     let compare_format = matches.is_present("compare");
 
@@ -146,6 +145,9 @@ fn main() {
         benchmark::run_all_tests(&mut stdout()).unwrap();
         return;
     }
+
+    let regex_str = matches.value_of("regex").unwrap();
+
 
     //  ___                   _
     // |_ _|_ __  _ __  _   _| |_ ___
