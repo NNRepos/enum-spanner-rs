@@ -100,7 +100,7 @@ impl Jump {
     /// Compute next level given the adjacency list of jumpable edges from
     /// current level to the next one and adjacency list of non-jumpable
     /// edges inside the next level.
-    pub fn init_next_level(&mut self, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
+    pub fn init_next_level(&mut self, jump_adj: &Vec<Vec<usize>>) {
         let levelset = &mut self.levelset;
 
         let last_level = self.last_level;
@@ -122,11 +122,6 @@ impl Jump {
             return;
         }
 
-        // NOTE: isn't there a better way of organizing this?
-        self.extend_level(next_level, nonjump_adj);
-
-//        self.init_reach(next_level, jump_adj);
-
         self.last_level = next_level;
     }
 
@@ -143,30 +138,18 @@ impl Jump {
 		self.levelset.keep_only(self.last_level, &keep);
 	}
 
-    pub fn trim_level(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
+    pub fn trim_level(&mut self, level: usize, rev_jump_adj: &Vec<Vec<usize>>) {
 	    let levelset = &mut self.levelset;
-		let curr_level = levelset.get_level(level-1);
 		let next_level = levelset.get_level(level);
 		let mut keep = BitSet::with_capacity(self.num_vertices);
 
-		for source in curr_level.iter() {
-			for &target in &jump_adj[source] {
-				if next_level.contains(target) {
-					keep.insert(source);
-				}
+		for target in next_level.iter() {
+			for &source in &rev_jump_adj[target] {
+				keep.insert(source);
 			}
 		}
-
-		for source in 0..nonjump_adj.len() {
-			for &target in &nonjump_adj[source] {
-				if keep.contains(target) {
-					keep.insert(source);
-				}
-			}
-		}
-
 		
-//		println!("keep level: {} curr: {:?} next: {:?} keep {:?}",level, curr_level, next_level, keep);
+//		println!("keep level: {} curr: {:?} next: {:?} keep {:?}",level, levelset.get_level(level-1), next_level, keep);
 		
 		levelset.keep_only(level-1, &keep);
 	}

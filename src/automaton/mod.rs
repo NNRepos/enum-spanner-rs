@@ -24,9 +24,12 @@ pub struct Automaton {
     // Redundant caching structures
     adj: Vec<Vec<(Rc<Label>, usize)>>,
     adj_for_char: HashMap<char, Vec<Vec<usize>>>,
+    adj_for_char_with_closure: HashMap<char, Vec<Vec<usize>>>,
+    rev_adj_for_char_with_closure: HashMap<char, Vec<Vec<usize>>>,
     assignations: Vec<Vec<(Rc<Label>, usize)>>,
     rev_assignations: Vec<Vec<(Rc<Label>, usize)>>,
     closure_for_assignations: Vec<Vec<usize>>,
+    closure_for_rev_assignations: Vec<Vec<usize>>,
 	jump_states: BitSet,
 }
 
@@ -43,9 +46,12 @@ impl Automaton {
 
             adj: Vec::new(),
             adj_for_char: HashMap::new(),
+            adj_for_char_with_closure: HashMap::new(),
+            rev_adj_for_char_with_closure: HashMap::new(),
             assignations: Vec::new(),
             rev_assignations: Vec::new(),
             closure_for_assignations: Vec::new(),
+            closure_for_rev_assignations: Vec::new(),
 			jump_states: BitSet::new(),
         };
 
@@ -53,6 +59,7 @@ impl Automaton {
         automaton.rev_assignations = automaton.init_rev_assignations();
         automaton.assignations = automaton.init_assignations();
         automaton.closure_for_assignations = automaton.init_closure_for_assignations();
+        automaton.closure_for_rev_assignations = automaton.init_closure_for_rev_assignations();
 		automaton.jump_states = automaton.init_jump_states();
 
         automaton
@@ -73,22 +80,61 @@ impl Automaton {
     /// Get the adjacency list representing transitions of the automaton that
     /// can be used when reading a given char.
     pub fn get_adj_for_char(&mut self, x: char) -> &Vec<Vec<usize>> {
+        self.adj_for_char.get(&x).unwrap()
+    }
+
+    pub fn get_rev_adj_for_char_with_closure(&self, x: char) -> &Vec<Vec<usize>> {
+        self.rev_adj_for_char_with_closure.get(&x).unwrap()
+    }
+
+    pub fn get_adj_for_char_with_closure(&mut self, x:char) -> &Vec<Vec<usize>> {
         let nb_states = self.get_nb_states();
         let adj_for_char = &mut self.adj_for_char;
         let transitions = &self.transitions;
+        let closure_for_assignations = &self.closure_for_assignations;
+        let closure_for_rev_assignations = &self.closure_for_rev_assignations;
+        let adj_for_char_with_closure = &mut self.adj_for_char_with_closure;
+        let rev_adj_for_char_with_closure = &mut self.rev_adj_for_char_with_closure;
 
-        adj_for_char.entry(x).or_insert_with(|| {
+        adj_for_char_with_closure.entry(x).or_insert_with(|| {
             let mut res = vec![Vec::new(); nb_states];
+            let mut res_closure = vec![Vec::new(); nb_states];
+            let mut res_rev_closure = vec![Vec::new(); nb_states];
 
             for (source, label, target) in transitions {
                 if let Label::Atom(atom) = &**label {
                     if atom.is_match(&x) {
                         res[*source].push(*target);
+                        res_closure[*source].push(*target);
+                        res_rev_closure[*target].push(*source);
+
+                        for &ttarget in &closure_for_assignations[*target] {
+                            res_closure[*source].push(ttarget);
+                        }
+
+                        for &ssource in &closure_for_rev_assignations[*source] {
+                            res_rev_closure[*target].push(ssource);
+                        }
                     }
                 }
             }
 
-            res
+            for targets in &mut res_closure {
+                targets.sort();
+                targets.dedup();
+            }
+
+            for sources in &mut res_rev_closure {
+                sources.sort();
+                sources.dedup();
+            }
+
+            rev_adj_for_char_with_closure.insert(x,res_rev_closure);
+
+            adj_for_char.insert(x,res);
+
+
+            res_closure
         })
     }
 
@@ -212,6 +258,18 @@ impl Automaton {
         }
 
         closure
+    }
+
+    fn init_closure_for_rev_assignations(&self) -> Vec<Vec<usize>> {
+        let closure_for_assignations = &self.closure_for_assignations;
+        let mut rev_closure = vec![Vec::new(); self.get_nb_states()];
+        for (source,targets) in closure_for_assignations.iter().enumerate() {
+            for &target in targets {
+                rev_closure[target].push(source);
+            }
+        }
+
+        rev_closure
     }
 
 	pub fn get_jump_states(&self) -> &BitSet {
