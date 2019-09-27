@@ -11,7 +11,7 @@ fn naive_results<'t>(regex: &Automaton, text: &'t str) -> HashSet<Mapping<'t>> {
 
 /// Build a HashSet collecting results of default algorithm.
 fn default_results<'t>(regex: &Automaton, text: &'t str) -> HashSet<Mapping<'t>> {
-    regex::compile_matches(regex.clone(), text).iter().collect()
+    regex::compile_matches(regex.clone(), text, 1).iter().collect()
 }
 
 #[test]

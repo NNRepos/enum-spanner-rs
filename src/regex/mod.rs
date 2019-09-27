@@ -20,7 +20,7 @@ pub fn compile_raw(regex: &str) -> Automaton {
 #[cfg(test)]
 pub fn is_match(regex: &str, text: &str) -> bool {
     let automaton = compile(&regex);
-    let matches = compile_matches(automaton, text);
+    let matches = compile_matches(automaton, text, 1);
 
     let ret = matches.iter().next().is_some();
     ret
