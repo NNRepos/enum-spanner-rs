@@ -29,12 +29,50 @@ pub enum Hir {
 }
 
 impl Hir {
-    pub fn from_regex(regex: &str) -> Hir {
-        let lib_hir = regex_syntax::Parser::new()
-            .parse(regex)
+    pub fn from_regex(regex: &str, raw: bool) -> Hir {
+        let (anchor_begin,anchor_end,regex) = if raw {
+            (true,true,regex.to_string())
+        } else {
+            Hir::reformat (regex)
+        };
+
+        let lib_hir = regex_syntax::ParserBuilder::new()
+            .dot_matches_new_line(true)
+            .build()
+            .parse(&regex)
             .expect("Invalid regexp syntax");
-        let (_, hir) = Hir::from_lib_hir(lib_hir, 0);
-        hir
+        let (num_vars, hir) = Hir::from_lib_hir(lib_hir, 0);
+
+        if raw {
+            return hir;
+        }
+        
+        let hir = match num_vars {
+            0 => {
+                let var = Rc::new(Variable::new("match".to_string(), 0));
+                let marker_open = Label::Assignation(Marker::Open(var.clone()));
+                let marker_close = Label::Assignation(Marker::Close(var));
+                
+                Hir::concat(Hir::Concat(Box::new(Hir::label(marker_open)), Box::new(hir)),
+                            Hir::label(marker_close))
+            },
+            _ => hir
+        };
+
+        let any = match regex_syntax::hir::Hir::any(false).into_kind() {
+            LibHir::Class(x) => x,
+            _ => panic!("LibHir broken!")
+        };
+
+        let hir = match anchor_begin {
+            true => hir,
+            false => Hir::concat(Hir::option(Hir::closure(Hir::label(Label::Atom(Atom::Class(any.clone()))))), hir)
+        };
+
+        match anchor_end {
+            true => hir,
+            false => Hir::concat(hir, Hir::option(Hir::closure(Hir::label(Label::Atom(Atom::Class(any))))))
+        }
     }
 
     /// Construct an Hir from regex_syntax's Hir format.
@@ -159,4 +197,23 @@ impl Hir {
 
         result
     }
+
+    fn reformat(regex: &str) -> (bool,bool,String) {
+        let mut regex = String::from(regex);
+
+        let anchor_begin = Some(&b'^') == regex.as_bytes().first();
+        let anchor_end = Some(&b'$') == regex.as_bytes().last();
+
+        // Remove anchor characters
+        if anchor_begin {
+            regex.remove(0);
+        }
+
+        if anchor_end {
+            regex.remove(regex.len() - 1);
+        }
+
+        (anchor_begin,anchor_end,regex)
+    }
+
 }
