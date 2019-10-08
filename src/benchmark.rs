@@ -2,188 +2,140 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::time::Instant;
 
+use serde::{Deserialize, Serialize};
+
 use super::regex;
 
-struct BenchmarkCase {
-    name:     &'static str,
-    comment:  &'static str,
-    filename: &'static str,
-    regex:    &'static str,
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BenchmarkCase {
+    name:     String,
+    comment:  String,
+    filename: String,
+    regex:    String,
 }
 
-pub fn run_all_tests<T>(stream: &mut T) -> Result<(), std::io::Error>
-where
-    T: std::io::Write,
-{
-    if cfg!(debug_assertions) {
-        eprintln!("[WARNING]    Running benchmarks in debug mode.");
-    }
+#[derive(Serialize, Deserialize)]
+pub struct BenchmarkResult {
+    benchmark: BenchmarkCase,
+    num_results: usize,
+    num_matrices: usize,
+    width_avg: f64,
+    width_max: usize,
+    compile_regex: f64,
+    preprocess: f64,
+    enumerate: f64,
+    delay_min: f64,
+    delay_max: f64,
+    delay_avg: f64,
+    delay_stddev: f64,
+    delay_hist: Vec<u32>,
+    memory_usage: usize,
+}
 
-    let benchmarks = vec![
-        BenchmarkCase {
-            name:     "First columns of CSV",
-            comment:  "Extract the first three columns of the input CSV document.",
-            filename: "benchmarks/pablo_alto_trees.csv",
-            regex:    r"\n(?P<x>[^,]+),(?P<y>[^,]+),(?P<z>[^,]+),",
-        },
-        BenchmarkCase {
-            name:     "Pairs of words",
-            comment:  "Extract all pairs of words that are in the same sentence.",
-            filename: "benchmarks/lorem_ipsum.txt",
-            regex:    r"[^\w](?P<word1>\w+)[^\w]((.|\n)*[^\w])?(?P<word2>\w+)[^\w]",
-        },
-        BenchmarkCase {
-            name:     "Close DNA",
-            comment:  "Find two substrings of a DNA sequence that are close from one another.",
-            filename: "benchmarks/dna.txt",
-            regex:    r"TTAC.{0,1000}CACC",
-        },
-        BenchmarkCase {
-            name:     "All substrings",
-            comment:  "Extract all non-empty substrings from the input document.",
-            filename: "benchmarks/lorem_ipsum.txt",
-            regex:    r"(.|\n)+",
-        },
-        BenchmarkCase {
-            name:     "Complex DNA",
-            comment:  "Complex DNA query that exploits flashlight search.",
-            filename: "benchmarks/dna.txt",
-            regex:    r"C.{0,15}(?P<x>T).{0,15}(?P<y>G*).{0,15}(?P<z>C).{0,15}A",
-        },
-    ];
-
-    for benchmark in benchmarks {
+impl BenchmarkCase {
+    pub fn read_from_file(filename: &str) -> Result<Vec<BenchmarkCase>,Box<std::error::Error>> {
         let mut input = String::new();
 
-        write!(stream, "-- {} ---------------\n", benchmark.name)?;
-        write!(stream, "{}\n", benchmark.comment)?;
+        File::open(&filename)?.read_to_string(&mut input)?;
+
+        let benchmarks: Vec<BenchmarkCase> = serde_json::from_str(&input)?;
+
+        Ok(benchmarks)
+    }
+
+    pub fn new(name: String, comment: String, filename: String, regex: String) -> BenchmarkCase {
+        BenchmarkCase {
+            name,
+            comment,
+            filename,
+            regex,
+        }
+    }
+
+    pub fn run(&self) -> Result<BenchmarkResult,std::io::Error> {   
+        let mut input = String::new();
 
         // Read input file content.
-        write!(stream, " - Loading file content ... ")?;
-        stream.flush()?;
+        File::open(&self.filename)?.read_to_string(&mut input)?;
+
+        // Compile the regex.
         let timer = Instant::now();
+        let automaton = regex::compile(&self.regex);
+        let compile_regex = timer.elapsed();
 
-        File::open(benchmark.filename)?.read_to_string(&mut input)?;
+        // Prepare the enumeration.
+        let timer = Instant::now();
+        let compiled_matches = regex::compile_matches(automaton, &input, 1);
+        let preprocess = timer.elapsed();
 
-        write!(
-            stream,
-            "{:.2?}\t({} bytes)\n",
-            timer.elapsed(),
-            input.as_bytes().len()
-        )?;
+        // Count matches.
+        let timer = Instant::now();
+        let count_matches = compiled_matches.iter().count();
+        let enumerate = timer.elapsed();
 
-        // Run the test itself.
-        run_test(stream, benchmark.regex, input)?;
+        let k=10;
+        let mut delays = Vec::with_capacity(k);
+        // Do k iterations to get rid of outliers
+        for _ in 0..k {
+            let start_time = Instant::now();
+            let mut times = Vec::with_capacity(count_matches);
+            let _ = compiled_matches.iter().map(|x| {
+                times.push(start_time.elapsed().subsec_nanos());
 
-        write!(stream, "\n")?;
-    }
+                x
+            }).count();
 
-    Ok(())
-}
+            let mut last = 0;
+            let delay: Vec<u32> = times.iter().map(|&d| {let i = ((d + 1000000000) - last) % 1000000000; last = d; i}).skip(1).collect();
 
-/// get detailed statistics on the delay.
-fn run_test<T>(stream: &mut T, regex: &str, input: String) -> Result<(), std::io::Error>
-where
-    T: std::io::Write,
-{
-    // Compile the regex.
-    write!(stream, " - Compiling regex      ... ")?;
-    stream.flush()?;
-    let timer = Instant::now();
-
-    let regex = regex::compile(regex);
-
-    write!(
-        stream,
-        "{:.2?}\t({} states)\n",
-        timer.elapsed(),
-        regex.get_nb_states()
-    )?;
-
-    // Prepare the enumeration.
-    write!(stream, " - Compiling matches    ... ")?;
-    stream.flush()?;
-    let timer = Instant::now();
-
-    let compiled_matches = regex::compile_matches(regex, &input, 1);
-
-    write!(
-        stream,
-        "{:.2?}\n",
-        timer.elapsed()
-    )?;
-
-    // Count matches.
-    write!(stream, " - Enumerate matches    ... ")?;
-    stream.flush()?;
-    let timer = Instant::now();
-
-    let count_matches = compiled_matches.iter().count();
-
-    write!(
-        stream,
-        "{:.2?}\t({} matches)\n",
-        timer.elapsed(),
-        count_matches
-    )?;
-    
-    let k=20;
-    let mut delays = Vec::with_capacity(k);
-    // Do k iterations to get rid of outliers
-    for _ in 0..k {
-        let start_time = Instant::now();
-        let mut times = Vec::with_capacity(count_matches);
-        let _ = compiled_matches.iter().map(|x| {
-            times.push(start_time.elapsed().subsec_nanos());
-
-            x
-        }).count();
-
-        let mut last = 0;
-        let delay: Vec<u32> = times.iter().map(|&d| {let mut i = ((d + 1000000000) - last) % 1000000000; last = d; i}).skip(1).collect();
-                    
-        delays.push(delay);
-    }
-
-    let mut iters = Vec::with_capacity(k);
-    for i in &delays {
-        iters.push(i.iter());
-    }
-
-    let mut temp: Vec<u32> = Vec::with_capacity(k);
-
-    let mean_delays: Vec<u32> = (0..count_matches-1).map(|_| {
-        temp.clear();
-        for mut iter in &mut iters {
-            temp.push(*iter.next().unwrap());
+            delays.push(delay);
         }
 
-        temp.sort();
+        let mut iters = Vec::with_capacity(k);
+        for i in &delays {
+            iters.push(i.iter());
+        }
 
-        (temp[6] + temp[7] + temp[8] + temp[9] + temp[10] + temp[11])/6
-    }).collect();
+        let mut temp: Vec<u32> = Vec::with_capacity(k);
 
-    let mean = stats::mean(mean_delays.iter().map(|&x| x));
-    let stddev = stats::stddev(mean_delays.iter().map(|&x| x));
-    let max: usize = *mean_delays.iter().max().unwrap() as usize;
-    let min = mean_delays.iter().min().unwrap();
-    writeln!(stream,"Statistics: {} {} {} {}", min, mean, max, stddev)?;
-    let mut hist = vec![0;max/1000 + 1];
-    for &i in &mean_delays {
-        hist[i as usize/1000]+=1;
-    }
-    
-    writeln!(stream,"Histogramm:\n{:?}", hist)?;
+        let mean_delays: Vec<u32> = (0..count_matches-1).map(|_| {
+            temp.clear();
+            for iter in &mut iters {
+                temp.push(*iter.next().unwrap());
+            }
 
-    writeln!(stream,"Outliers:")?;
+            *temp.iter().min().unwrap()
+        }).collect();
 
-    for (i,d) in mean_delays.iter().enumerate().filter(|(_,&x)| x>50000) {
-        writeln!(stream,"{} took {} usec", i, d/1000)?;
-    }
+        let mean = stats::mean(mean_delays.iter().map(|&x| x));
+        let stddev = stats::stddev(mean_delays.iter().map(|&x| x));
+        let max: usize = *mean_delays.iter().max().unwrap() as usize;
+        let min = *mean_delays.iter().min().unwrap();
+        let mut hist = vec![0;max/1000 + 1];
+        for &i in &mean_delays {
+            hist[i as usize/1000]+=1;
+        }
 
-    Ok(())
+        let (num_matrices, width_max, width_avg) = compiled_matches.get_statistics();
+
+        Ok(BenchmarkResult {
+            benchmark: self.clone(),
+            num_results: count_matches,
+            num_matrices,
+            width_avg,
+            width_max,
+            compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
+            preprocess: preprocess.as_nanos() as f64/1000000000.0,
+            enumerate: enumerate.as_nanos() as f64/1000000000.0,
+            delay_min: min as f64 / 1000000000.0,
+            delay_max: max as f64 / 1000000000.0,
+            delay_avg: mean as f64 / 1000000000.0,
+            delay_stddev: stddev as f64 / 1000000000.0,
+            delay_hist: hist,
+            memory_usage: compiled_matches.get_memory_usage(),
+        })
+    }   
 }
-
 
 
 

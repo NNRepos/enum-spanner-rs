@@ -142,7 +142,11 @@ fn main() {
     //
 
     if benchmark {
-        benchmark::run_all_tests(&mut stdout()).unwrap();
+        let benchmarks = benchmark::BenchmarkCase::read_from_file("benchmarks/benchmarks.json").unwrap();
+        for benchmark in benchmarks {
+            let result = benchmark.run().unwrap();
+            println!("{}", serde_json::to_string_pretty(&result).unwrap());
+        }
         return;
     }
 

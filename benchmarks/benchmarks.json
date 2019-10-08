@@ -1,0 +1,26 @@
+[
+  {
+    "name": "First columns of CSV",
+    "comment": "Extract the first three columns of the input CSV document.",
+    "filename": "benchmarks\/pablo_alto_trees.csv",
+    "regex": "\\n(?P<x>[^,]+),(?P<y>[^,]+),(?P<z>[^,]+),"
+  },
+  {
+    "name": "Pairs of words",
+    "comment": "Extract all pairs of words that are in the same sentence.",
+    "filename": "benchmarks\/lorem_ipsum.txt",
+    "regex": "[^\\w](?P<word1>\\w+)[^\\w]((.|\\n)*[^\\w])?(?P<word2>\\w+)[^\\w]"
+  },
+  {
+    "name": "All substrings",
+    "comment": "Extract all non-empty substrings from the input document.",
+    "filename": "benchmarks\/lorem_ipsum.txt",
+    "regex": "(.|\\n)+"
+  },
+  {
+    "name": "Complex DNA",
+    "comment": "Complex DNA query that exploits flashlight search.",
+    "filename": "benchmarks\/dna.txt",
+    "regex": "C.{0,15}(?P<x>T).{0,15}(?P<y>G*).{0,15}(?P<z>C).{0,15}A"
+  }
+]
