@@ -3,6 +3,7 @@ use bit_vec::BitVec;
 use bit_set::BitSet;
 use std::fmt;
 use std::cell::RefCell;
+use std::cell::Cell;
 
 /// Naive representation of a matrix as a single consecutive chunk of memory.
 pub struct Matrix {
@@ -11,13 +12,14 @@ pub struct Matrix {
     effective_width:  usize,
     data:   BitVec,
 	temp_column: RefCell<BitVec>,
+	usage_count: Cell<u32>,
 }
 
 impl<'a> Matrix
 {
     /// Create a matrix filled with false.
     pub fn new(height: usize, width: usize) -> Matrix {
-		let effective_width = (((width - 1) / 32 ) + 1); 
+		let effective_width = width / 32 + if (width & 31)==0 {0} else {1}; 
 	
         Matrix {
             width,
@@ -25,6 +27,7 @@ impl<'a> Matrix
 			effective_width,
             data: BitVec::<u32>::from_elem(effective_width*height*32, false),
 			temp_column: RefCell::new(BitVec::<u32>::from_elem(effective_width*32, false)),
+			usage_count: Cell::new(0),
         }
     }
 
@@ -49,6 +52,7 @@ impl<'a> Matrix
     }
 
 	pub fn col_mul_inplace(&self, column: &mut BitSet) {
+		self.usage_count.set(self.usage_count.get()+1);
 //		println!("col_mul: width: {} height: {}, column_height: {}", self.width, self.height, column.capacity());
 		let mut temp_column = self.temp_column.borrow_mut();
 		temp_column.clone_from(column.get_ref());
@@ -81,6 +85,18 @@ impl<'a> Matrix
 		result
 	}
 
+	pub fn get_usage_count(&self) -> u32 {
+		self.usage_count.get()
+	}
+
+	pub fn count_ones(&self) -> usize {
+		self.data.iter().filter(|&x| x).count()
+	}
+
+	pub fn get_memory_usage(&self) -> usize {
+		//std::mem::size_of::<Matrix>() + 
+		self.data.capacity()/8
+	}
 }
 
 impl Index<(usize, usize)> for Matrix

@@ -387,6 +387,44 @@ impl Jump {
 
 		reach[level].push(new_reach);
     }
+
+	pub fn get_statistics(&self) -> (usize, usize, f64) {
+		(self.get_num_matrices(), self.get_max_width(), self.get_avg_width())
+	}
+
+	fn get_num_matrices(&self) -> usize {
+		self.reach.iter().fold(0, |acc, x| acc + x.len())
+	}
+
+	fn get_max_width(&self) -> usize {
+		self.jl.iter().fold(0, |acc, x| core::cmp::max(acc, x.len()))
+	}
+
+	fn get_avg_width(&self) -> f64 {
+		self.jl.iter().fold(0, |acc, x| acc + x.len()) as f64 / self.jl.len() as f64
+	}
+
+	/// returns a rough estimation of the memory usage
+	pub fn get_memory_usage(&self) -> usize {
+		self.levelset.get_memory_usage() + self.get_matrix_usage() + self.get_rlevel_usage() + self.get_jl_usage()
+	}
+
+	#[inline(never)]
+	fn get_matrix_usage(&self) -> usize {
+		self.reach.iter().fold(0, |acc, x| { 
+			acc + x.iter().fold(std::mem::size_of::<Vec<usize>>(), |acc2, y| acc2 + y.get_memory_usage())
+		})
+	}
+
+	#[inline(never)]
+	fn get_rlevel_usage(&self) -> usize {
+		self.rlevel.iter().fold(0, |acc, x| { acc + std::mem::size_of::<Vec<usize>>() + x.capacity() * std::mem::size_of::<usize>()})
+	}
+
+	#[inline(never)]
+	fn get_jl_usage(&self) -> usize {
+		self.jl.iter().fold(0, |acc, x| { acc + std::mem::size_of::<Vec<usize>>() + x.capacity() * std::mem::size_of::<usize>()})
+	}
 }
 
 impl fmt::Debug for Jump {

@@ -133,6 +133,10 @@ impl LevelSet {
     pub fn register(&mut self, level: usize, vertex: usize) {
 		self.levels.set(level*self.effective_level_size*32 + vertex, true);
     }
+
+	pub fn get_memory_usage(&self) -> usize {
+		self.levels.capacity()/8
+	}
 }
 
 impl fmt::Debug for LevelSet {

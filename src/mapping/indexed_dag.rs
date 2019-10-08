@@ -151,6 +151,14 @@ impl<'t> IndexedDag<'t> {
 
         NextLevelIterator::explore(&self.automaton, expected_markers, gamma)
     }
+
+    pub fn get_memory_usage(&self) -> usize {
+        self.jump.get_memory_usage()
+    }
+
+    pub fn get_statistics(&self) -> (usize, usize, f64) {
+		self.jump.get_statistics()
+	}
 }
 
 //  ___           _                   _
