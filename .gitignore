@@ -3,3 +3,6 @@
 **/*.pdf
 **/*.dot
 **/callgrind.out.*
+Cargo.lock
+
+/.idea
