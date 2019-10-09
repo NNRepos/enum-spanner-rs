@@ -17,6 +17,7 @@ use std::time;
 
 use clap::{App, Arg};
 use mapping::Mapping;
+use mapping::indexed_dag::TrimmingStrategy;
 
 #[derive(PartialEq, Eq)]
 enum DisplayFormat {
@@ -103,6 +104,15 @@ fn main() {
                        is a trade-off between pre-processing and enumeration time. Bigger values mean \
                        faster preprocessing and possibly slower enumeration."),
 		)
+        .arg(
+            Arg::with_name("trimming_strategy")
+            .long("trimming")
+            .short("t")
+            .takes_value(true)
+            .help("Should the DAG be trimmed? Possible values: full (default), partial, no. Partial trimming\
+                        only removes states that have no successor. Full trimming removes all states that do\
+                        not reach a final state."),
+        )
         .get_matches();
 
     // Extract parameters
@@ -116,6 +126,15 @@ fn main() {
     let use_naive_quadratic = matches.is_present("use_naive_quadratic");
 
     let debug_infos = matches.is_present("debug_infos");
+
+    let trimming_strategy_str = matches.value_of("trimming_strategy");
+    let trimming_strategy = match trimming_strategy_str {
+        None => TrimmingStrategy::FullTrimming,
+        Some("full") => TrimmingStrategy::FullTrimming,
+        Some("partial") => TrimmingStrategy::PartialTrimming,
+        Some("no") => TrimmingStrategy::NoTrimming,
+        Some(s) => panic!("Invalid option for trimming: {}", s),
+    };
 
     let jump_distance_str = matches.value_of("jump_distance");
     let jump_distance = match jump_distance_str {
@@ -249,7 +268,7 @@ fn main() {
     } else if use_naive_quadratic {
         Box::new(regex::naive::NaiveEnumQuadratic::new(regex_str, &text))
     } else {
-        indexed_dag=regex::compile_matches_progress(regex, &text, jump_distance);
+        indexed_dag=regex::compile_matches_progress(regex, &text, jump_distance, trimming_strategy);
         Box::new(indexed_dag.iter())
     };
 

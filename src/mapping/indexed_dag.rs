@@ -5,6 +5,7 @@ use super::super::mapping::{Mapping, Marker};
 use super::super::progress::Progress;
 use super::jump::Jump;
 use bit_set::BitSet;
+use serde::{Deserialize, Serialize};
 
 //  ___           _                   _ ____
 // |_ _|_ __   __| | _____  _____  __| |  _ \  __ _  __ _
@@ -31,6 +32,13 @@ pub enum ToggleProgress {
     Disabled,
 }
 
+#[derive(Eq, PartialEq, Serialize, Deserialize, Clone, Copy)]
+pub enum TrimmingStrategy {
+    NoTrimming,
+    PartialTrimming,
+    FullTrimming,
+}
+
 impl<'t> IndexedDag<'t> {
     /// Compute the index of matches of an automaton over input text.
     pub fn compile(
@@ -38,6 +46,7 @@ impl<'t> IndexedDag<'t> {
         text: &str,
         toggle_progress: ToggleProgress,
 		jump_distance: usize,
+        trimming_strategy: TrimmingStrategy,
     ) -> IndexedDag {
         // Index utf8 chars, the ith char being represented by
         // `text[char_offsets[i]..char_offsets[i+1]]`
@@ -74,36 +83,39 @@ impl<'t> IndexedDag<'t> {
 
 //		println!("Levelset: {:#?}", jump);
 
-		jump.trim_last_level(&automaton.finals, &closure_for_assignations);
+        if trimming_strategy == TrimmingStrategy::FullTrimming {
+            jump.trim_last_level(&automaton.finals, &closure_for_assignations);
+        }
 	
-
-		if !jump.is_disconnected() {
+        if !jump.is_disconnected() {
 
 //		println!("Levelset: {:#?}", jump);
 			
-			let chars: Vec<_> = text.chars().collect();
-			let nb_levels = chars.len();
-			let mut level = nb_levels;
-	        let mut progress = Progress::from_iter(chars.into_iter().rev())
-   	        .auto_refresh(toggle_progress == ToggleProgress::Enabled);
-
-            while let Some(curr_char) = progress.next() {
-                let rev_adj_for_char = automaton.get_rev_adj_for_char_with_closure(curr_char);
-                jump.trim_level(level, rev_adj_for_char);
-                level -= 1;
+            if trimming_strategy != TrimmingStrategy::NoTrimming {
+                let chars: Vec<_> = text.chars().collect();
+                let nb_levels = chars.len();
+                let mut level = nb_levels;
+                let mut progress = Progress::from_iter(chars.into_iter().rev())
+                    .auto_refresh(toggle_progress == ToggleProgress::Enabled);
+            
+                while let Some(curr_char) = progress.next() {
+                    let rev_adj_for_char = automaton.get_rev_adj_for_char_with_closure(curr_char);
+                    jump.trim_level(level, rev_adj_for_char);
+                    level -= 1;
+                }
             }
 
 //		println!("Levelset: {:#?}", jump);
 
-        let chars: Vec<_> = text.chars().collect();
-        let mut progress = Progress::from_iter(chars.into_iter())
-            .auto_refresh(toggle_progress == ToggleProgress::Enabled);
-		let mut level = 1;
+            let chars: Vec<_> = text.chars().collect();
+            let mut progress = Progress::from_iter(chars.into_iter())
+                .auto_refresh(toggle_progress == ToggleProgress::Enabled);
+		    let mut level = 1;
 
-        	while let Some(curr_char) = progress.next() {
-            	let adj_for_char = automaton.get_adj_for_char(curr_char);
-            	jump.init_reach(level, adj_for_char, &closure_for_assignations);
-				level+=1;
+            while let Some(curr_char) = progress.next() {
+                let adj_for_char = automaton.get_adj_for_char(curr_char);
+                jump.init_reach(level, adj_for_char, &closure_for_assignations);
+			    level+=1;
 	        }
 		}
 

@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::time::Instant;
+use super::mapping::indexed_dag::TrimmingStrategy;
 
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +13,9 @@ pub struct BenchmarkCase {
     comment:  String,
     filename: String,
     regex:    String,
+    jump: Option<usize>,
+    trimming: Option<TrimmingStrategy>,
+    length:   Option<u64>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -49,14 +53,29 @@ impl BenchmarkCase {
             comment,
             filename,
             regex,
+            length: None,
+            jump: None,
+            trimming: None,
         }
     }
 
     pub fn run(&self) -> Result<BenchmarkResult,std::io::Error> {   
         let mut input = String::new();
+        let trimming_strategy = match self.trimming {
+            None => TrimmingStrategy::FullTrimming,
+            Some(s) => s,
+        };
+
+        let jump_distance = match self.jump {
+            None => 1,
+            Some(d) => d,
+        };
 
         // Read input file content.
-        File::open(&self.filename)?.read_to_string(&mut input)?;
+        File::open(&self.filename)?.take(match self.length {
+            Some(l) => l,
+            None => std::u64::MAX,
+        }).read_to_string(&mut input)?;
 
         // Compile the regex.
         let timer = Instant::now();
@@ -65,7 +84,7 @@ impl BenchmarkCase {
 
         // Prepare the enumeration.
         let timer = Instant::now();
-        let compiled_matches = regex::compile_matches(automaton, &input, 1);
+        let compiled_matches = regex::compile_matches(automaton, &input, jump_distance, trimming_strategy);
         let preprocess = timer.elapsed();
 
         // Count matches.
