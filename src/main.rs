@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
 use std::time;
+use std::path::Path;
 
 use clap::{App, Arg};
 use mapping::Mapping;
@@ -44,12 +45,15 @@ fn main() {
         .arg(
             Arg::with_name("benchmark")
                 .long("benchmark")
-                .help("Run benchmarks."),
+                .help("Run benchmarks.")
+                .takes_value(true)
+                .default_value("benchmarks/benchmarks.json"),
         )
         .arg(
             Arg::with_name("regex")
                 .help("The pattern to look for.")
-                .required_unless("benchmark"),
+                .required(true)
+                .conflicts_with("benchmark"),
         )
         .arg(
             Arg::with_name("file")
@@ -161,7 +165,8 @@ fn main() {
     //
 
     if benchmark {
-        let benchmarks = benchmark::BenchmarkCase::read_from_file("benchmarks/benchmarks.json").unwrap();
+        let path = Path::new(matches.value_of("benchmark").unwrap());
+        let benchmarks = benchmark::BenchmarkCase::read_from_file(&path).unwrap();
         for benchmark in benchmarks {
             let result = benchmark.run().unwrap();
             println!("{}", serde_json::to_string_pretty(&result).unwrap());

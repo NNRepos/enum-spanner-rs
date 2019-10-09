@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::path::Path;
 use std::io::prelude::*;
 use std::time::Instant;
 use super::mapping::indexed_dag::TrimmingStrategy;
@@ -37,12 +38,19 @@ pub struct BenchmarkResult {
 }
 
 impl BenchmarkCase {
-    pub fn read_from_file(filename: &str) -> Result<Vec<BenchmarkCase>,Box<std::error::Error>> {
+    pub fn read_from_file(filename: &Path) -> Result<Vec<BenchmarkCase>,Box<std::error::Error>> {
         let mut input = String::new();
 
         File::open(&filename)?.read_to_string(&mut input)?;
+        let path = filename.parent();
 
-        let benchmarks: Vec<BenchmarkCase> = serde_json::from_str(&input)?;
+        let mut benchmarks: Vec<BenchmarkCase> = serde_json::from_str(&input)?;
+
+        if let Some(path) = path {
+            for mut benchmark in &mut benchmarks {
+                benchmark.filename = path.join(benchmark.filename.clone()).to_str().unwrap().to_string();
+            }
+        }
 
         Ok(benchmarks)
     }
