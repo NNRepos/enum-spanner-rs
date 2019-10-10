@@ -189,7 +189,7 @@ impl Hir {
             let mut optionals = Hir::epsilon();
 
             for _ in min..max {
-                optionals = Hir::option(Hir::concat(hir.clone(), optionals));
+                optionals = Hir::option(Hir::concat(hir.clone(),optionals));
             }
 
             result = Hir::concat(result, optionals);

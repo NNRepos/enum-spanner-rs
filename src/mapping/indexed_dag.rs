@@ -168,7 +168,7 @@ impl<'t> IndexedDag<'t> {
         self.jump.get_memory_usage()
     }
 
-    pub fn get_statistics(&self) -> (usize, usize, f64) {
+    pub fn get_statistics(&self) -> (usize, usize, f64, usize, f64, usize, f64) {
 		self.jump.get_statistics()
 	}
 }

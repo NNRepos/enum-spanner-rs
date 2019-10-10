@@ -23,7 +23,6 @@ pub struct BenchmarkCase {
 pub struct BenchmarkResult {
     benchmark: BenchmarkCase,
     num_results: usize,
-    num_matrices: usize,
     width_avg: f64,
     width_max: usize,
     compile_regex: f64,
@@ -35,6 +34,11 @@ pub struct BenchmarkResult {
     delay_stddev: f64,
     delay_hist: Vec<u32>,
     memory_usage: usize,
+    num_matrices: usize,
+    num_used_matrices: usize,
+    matrix_avg_size: f64,
+    matrix_max_size: usize,
+    matrix_avg_density: f64
 }
 
 impl BenchmarkCase {
@@ -143,12 +147,16 @@ impl BenchmarkCase {
             hist[i as usize/1000]+=1;
         }
 
-        let (num_matrices, width_max, width_avg) = compiled_matches.get_statistics();
+        let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = compiled_matches.get_statistics();
 
         Ok(BenchmarkResult {
             benchmark: self.clone(),
             num_results: count_matches,
             num_matrices,
+            num_used_matrices,
+            matrix_avg_size,
+            matrix_max_size,
+            matrix_avg_density,
             width_avg,
             width_max,
             compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
