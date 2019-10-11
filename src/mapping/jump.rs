@@ -293,7 +293,7 @@ impl Jump {
 
         // Compute the adjacency between current level and the previous one.
 		let mut prev_level_iter = prev_level.iter();
-        let mut new_reach_t = Matrix::new(curr_level.len(), prev_level_len);
+        let mut new_reach_t = Matrix::new(curr_level.len() as u32, prev_level_len as u32);
 		let mut targets = BitSet::with_capacity(self.num_vertices);
 
 		// init new_reach_t to point to last level
@@ -305,7 +305,7 @@ impl Jump {
 
 			self.levelset.vertices_to_indices(level,&mut targets);
 			for id in targets.iter() {
-            	new_reach_t.set(id, id_source, true);
+            	new_reach_t.insert(id as u32, id_source as u32);
 			}
 			targets.clear();
         }
@@ -405,7 +405,7 @@ impl Jump {
 			(count + 1, used_count + if x.get_usage_count()>0 {1} else {0}, total_size + size, std::cmp::max(max_size, size), count_ones + x.count_ones())
 		} );
 
-		(count, used_count, total_size as f64 / count as f64, max_size, count_ones as f64 / total_size as f64)
+		(count, used_count, total_size as f64 / count as f64, max_size as usize, count_ones as f64 / total_size as f64)
 	}
 
 	fn get_max_width(&self) -> usize {
