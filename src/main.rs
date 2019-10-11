@@ -52,6 +52,7 @@ fn main() {
             Arg::with_name("benchmark-file")
                 .long("benchmark-file")
                 .help("Read a set of benchmarks from a file in JSON syntax. Implies --benchmark")
+                .takes_value(true)
         )
         .arg(
             Arg::with_name("regex")
