@@ -19,6 +19,7 @@ use std::path::Path;
 use clap::{App, Arg};
 use mapping::Mapping;
 use mapping::indexed_dag::TrimmingStrategy;
+use benchmark::BenchmarkCase;
 
 #[derive(PartialEq, Eq)]
 enum DisplayFormat {
@@ -45,19 +46,22 @@ fn main() {
         .arg(
             Arg::with_name("benchmark")
                 .long("benchmark")
-                .help("Run benchmarks.")
-                .takes_value(true)
-                .default_value("benchmarks/benchmarks.json"),
+                .help("Output statistics. Requiers one of benchmark-file or file to be present.")
+        )
+        .arg(
+            Arg::with_name("benchmark-file")
+                .long("benchmark-file")
+                .help("Read a set of benchmarks from a file in JSON syntax. Implies --benchmark")
         )
         .arg(
             Arg::with_name("regex")
                 .help("The pattern to look for.")
                 .required(true)
-                .conflicts_with("benchmark"),
+                .conflicts_with("benchmark-file"),
         )
         .arg(
             Arg::with_name("file")
-                .help("The file to be read, if none is specified, STDIN is used."),
+                .help("The file to be read, if none is specified, STDIN is used.")
         )
         .arg(
             Arg::with_name("count")
@@ -113,9 +117,11 @@ fn main() {
             .long("trimming")
             .short("t")
             .takes_value(true)
-            .help("Should the DAG be trimmed? Possible values: full (default), partial, no. Partial trimming\
-                        only removes states that have no successor. Full trimming removes all states that do\
-                        not reach a final state."),
+            .default_value("full")
+            .possible_value("full")
+            .possible_value("partial")
+            .possible_value("no")
+            .help("Should the DAG be trimmed? Usefull for benchmarking the effect of trimming."),
         )
         .get_matches();
 
@@ -164,8 +170,11 @@ fn main() {
     // |____/ \___|_| |_|\___|_| |_|_| |_| |_|\__,_|_|  |_|\_\
     //
 
-    if benchmark {
-        let path = Path::new(matches.value_of("benchmark").unwrap());
+    let benchmark_file = matches.value_of("benchmark-file");
+
+    if benchmark_file != None {
+        
+        let path = Path::new(benchmark_file.unwrap());
         let benchmarks = benchmark::BenchmarkCase::read_from_file(&path).unwrap();
         for benchmark in benchmarks {
             let result = benchmark.run().unwrap();
@@ -175,6 +184,11 @@ fn main() {
     }
 
     let regex_str = matches.value_of("regex").unwrap();
+
+    if (benchmark) {
+        let result = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy).run().unwrap();
+        println!("{}", serde_json::to_string_pretty(&result).unwrap());
+    }
 
 
     //  ___                   _

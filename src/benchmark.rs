@@ -59,15 +59,15 @@ impl BenchmarkCase {
         Ok(benchmarks)
     }
 
-    pub fn new(name: String, comment: String, filename: String, regex: String) -> BenchmarkCase {
+    pub fn new(name: String, comment: String, filename: String, regex: String, jump: usize, trimming: TrimmingStrategy) -> BenchmarkCase {
         BenchmarkCase {
             name,
             comment,
             filename,
             regex,
             length: None,
-            jump: None,
-            trimming: None,
+            jump: Some(jump),
+            trimming: Some(trimming),
         }
     }
 
