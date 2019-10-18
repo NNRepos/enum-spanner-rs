@@ -186,9 +186,10 @@ fn main() {
 
     let regex_str = matches.value_of("regex").unwrap();
 
-    if (benchmark) {
+    if benchmark {
         let result = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy).run().unwrap();
-        println!("{}", serde_json::to_string_pretty(&result).unwrap());
+        println!("[\n{}\n]", serde_json::to_string_pretty(&result).unwrap());
+        return;
     }
 
 
