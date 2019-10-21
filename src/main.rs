@@ -174,13 +174,17 @@ fn main() {
     let benchmark_file = matches.value_of("benchmark-file");
 
     if benchmark_file != None {
-        
+        print!("[");
         let path = Path::new(benchmark_file.unwrap());
         let benchmarks = benchmark::BenchmarkCase::read_from_file(&path).unwrap();
+        let mut first = true;
         for benchmark in benchmarks {
+            println!("{}", if first {""} else {","});
             let result = benchmark.run().unwrap();
-            println!("{}", serde_json::to_string_pretty(&result).unwrap());
+            print!("{}", serde_json::to_string_pretty(&result).unwrap());
+            first = false;
         }
+        println!("\n]");
         return;
     }
 
