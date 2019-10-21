@@ -34,6 +34,16 @@ impl LevelSet {
         }
     }
 
+	pub fn move_level(&mut self, level: usize, target: usize) {
+		unsafe {
+			let levels_storage = self.levels.storage_mut();
+		
+			for i in 0..self.effective_level_size {
+				levels_storage[target * self.effective_level_size + i] = levels_storage[level * self.effective_level_size + i];
+			}
+		}
+	}
+
     pub fn get_level(&self, level: usize) -> BitSet {
         let mut levelset = BitVec::from_elem(self.num_vertices,false);
 

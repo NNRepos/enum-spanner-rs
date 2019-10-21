@@ -5,6 +5,16 @@ use bit_set::BitSet;
 use super::super::matrix::Matrix;
 use super::levelset::LevelSet;
 
+/// Holds for some level the id, 
+/// the jump target levels for all nodes, and 
+/// a set of matrices together with the target levels
+struct Level {
+	id: usize,
+	jl: Vec<usize>,
+	reach: Vec<(usize,Matrix)>
+}
+
+
 //      _
 //     | |_   _ _ __ ___  _ __
 //  _  | | | | | '_ ` _ \| '_ \
@@ -20,24 +30,17 @@ use super::levelset::LevelSet;
 /// to be able to be able to navigate quickly from the last to the first layer
 /// by being able to skip any path that do not contain any assignation edges.
 pub struct Jump {
-    /// Represent levels in the levelset, which will be built on top of one
-    /// another.
-    levelset: LevelSet,
+    /// Holds the bitmat, describing which states are reachable in a level
+    dag_bitmap: LevelSet,
+
+	/// Holds all levels
+	levels: Vec<Level>,
+
     /// Last level that was built.
     last_level: usize,
 
 	/// vertices of the automaton that have an incomping assignment transition
 	jump_vertices: BitSet,
-
-    /// Closest level where an assignation is done accessible from any node.
-    jl: Vec<Vec<usize>>,
-
-    /// Set of levels accessible from any level using `jl`.
-    rlevel: Vec<Vec<usize>>,
-    /// For any pair of level `(i, j)` such that i at the k-th position in `rlevel[j]`,
-    /// `reach[i][k]` is the accessibility matrix of vertices from level i
-    /// to level j.
-    reach: Vec<Vec<Matrix>>,
 
 	num_vertices: usize,
 	
@@ -45,15 +48,10 @@ pub struct Jump {
 	/// where i is the last jumpable level init_reach was run on and j is the last level
 	/// init_reach was called on. Is empty if i==j.
 	reach_matrix: Matrix,
-	reach_level: usize,
+	last_jl: Vec<usize>,
 	
 	/// distance between jump targets
 	jump_distance: usize,
-	
-	/// The levels that are valid jump targets  
-	jump_levels: BitSet,
-	
-	last_jump_level: usize,
 }
 
 impl Jump {
@@ -62,33 +60,18 @@ impl Jump {
         T: Iterator<Item = usize>,
     {
         let mut jump = Jump {
-            levelset:            LevelSet::new(num_levels, num_vertices),
+            dag_bitmap:            LevelSet::new(num_levels, num_vertices),
             last_level:          0,
 			jump_vertices:	     jump_vertices.clone(),
-//            count_ingoing_jumps: HashMap::new(),
-            jl:                  Vec::with_capacity(num_levels),
-            rlevel:              Vec::with_capacity(num_levels),
-            reach:               Vec::with_capacity(num_levels),
+            levels:                  Vec::new(),
 			num_vertices:		 num_vertices,
 			reach_matrix:		 Matrix::new(1,1),
-			reach_level:         0,
 			jump_distance:       jump_distance,
-			last_jump_level:     0,
-			jump_levels:         if jump_distance==1 {
-				                     BitSet::default()
-                                 } else {
-                                     BitSet::with_capacity(num_levels)	
-			                     },
+			last_jl: Vec::new(),
         };
 
-        jump.rlevel.push(Vec::new());
-		jump.reach.push(Vec::new());
-		jump.jl.push(vec![0; num_vertices]);
-		jump.jump_levels.insert(0);
-
         for state in initial_level {
-            jump.levelset.register(state, 0);
-//            jump.jl[0]].insert((0, state), 0);
+            jump.dag_bitmap.register(state, 0);
         }
 
         // Init first level
@@ -97,28 +80,36 @@ impl Jump {
         jump
     }
 
+	pub fn num_levels(&self) -> usize {
+		self.levels.len()
+	}
+
+	pub fn get_pos(&self, level: usize) -> usize {
+		self.levels[level].id
+	}
+
     /// Compute next level given the adjacency list of jumpable edges from
     /// current level to the next one and adjacency list of non-jumpable
     /// edges inside the next level.
     pub fn init_next_level(&mut self, jump_adj: &Vec<Vec<usize>>) {
-        let levelset = &mut self.levelset;
+        let dag_bitmap = &mut self.dag_bitmap;
 
         let last_level = self.last_level;
         let next_level = self.last_level + 1;
 
         // NOTE: this clone is only necessary for the borrow checker.
-        let last_level_vertices = levelset.get_level(last_level).clone();
+        let last_level_vertices = dag_bitmap.get_level(last_level).clone();
 
         // Register jumpable transitions from this level to the next one
         for source in last_level_vertices.iter() {
             for &target in &jump_adj[source] {
-		        levelset.register(next_level, target);
+		        dag_bitmap.register(next_level, target);
             }
         }
 
         // If at some point the next level is not reached, the output will be empty
         // anyway.
-        if levelset.get_level(next_level).is_empty() {
+        if dag_bitmap.get_level(next_level).is_empty() {
             return;
         }
 
@@ -135,12 +126,12 @@ impl Jump {
 			}
 		}
 		
-		self.levelset.keep_only(self.last_level, &keep);
+		self.dag_bitmap.keep_only(self.last_level, &keep);
 	}
 
     pub fn trim_level(&mut self, level: usize, rev_jump_adj: &Vec<Vec<usize>>) {
-	    let levelset = &mut self.levelset;
-		let next_level = levelset.get_level(level);
+	    let dag_bitmap = &mut self.dag_bitmap;
+		let next_level = dag_bitmap.get_level(level);
 		let mut keep = BitSet::with_capacity(self.num_vertices);
 
 		for target in next_level.iter() {
@@ -149,60 +140,46 @@ impl Jump {
 			}
 		}
 		
-//		println!("keep level: {} curr: {:?} next: {:?} keep {:?}",level, levelset.get_level(level-1), next_level, keep);
+//		println!("keep level: {} curr: {:?} next: {:?} keep {:?}",level, dag_bitmap.get_level(level-1), next_level, keep);
 		
-		levelset.keep_only(level-1, &keep);
+		dag_bitmap.keep_only(level-1, &keep);
 	}
 
     pub fn is_disconnected(&self) -> bool {
-        self.levelset.get_level(self.last_level).is_empty()
+        self.dag_bitmap.get_level(self.last_level).is_empty()
     }
 
     /// Jump to the next relevant level from vertices in gamma at a given level.
     /// A relevent level has a node from which there is a path to gamma and
     /// that has an ingoing assignation.
-    ///
-    /// NOTE: It may be possible to return an iterator to refs of usize, but the
-    /// autoref seems to not do the work.
-    pub fn jump(&self, level: usize, gamma: &mut BitSet) -> Option<usize>
+    pub fn jump(&self, level_id: usize, gamma: &mut BitSet) -> Option<usize>
     {
-		let jll = &self.jl[level];
-		self.levelset.vertices_to_indices(level,gamma);
+		
+		let level = &self.levels[level_id];
+		self.dag_bitmap.vertices_to_indices(level_id,gamma);
         let jump_level = gamma
             .iter()
-            .filter_map(|vertex| {if jll[vertex]<std::usize::MAX {Some(jll[vertex])} else {None}})
-            .max().unwrap_or(level);
+            .filter_map(|vertex| {if level.jl[vertex]<std::usize::MAX {Some(level.jl[vertex])} else {None}})
+            .max();
 
-		if jump_level == level {
+		if jump_level == None {
 			return None;
 		}
 
-		let mut current_level = level;
+		let mut current_level = level_id;
 		
-//		println!("level: {}   jump_level: {}", level, jump_level);
-
-		while current_level>jump_level {
-			let mut next_level = current_level;
-			let mut index = 0;
-
-			for &x in self.rlevel[current_level].iter() {
-				if x < jump_level {
-					index += 1 ;
-				} else {
-					next_level = x; 
-					break;
-				}
+		while current_level>jump_level.unwrap() {
+			if let Some((l, matrix)) = level.reach.iter().find(|&&(id,_)| id>=jump_level.unwrap()) {
+				matrix.col_mul_inplace(gamma);
+				current_level = *l;
+			} else {
+				panic!("No suitable matrix found for jump.");
 			}
-
-			let matrix = &self.reach[current_level][index];
-			matrix.col_mul_inplace(gamma);
-			
-			current_level = next_level;
 		}	
 		
-		self.levelset.indices_to_vertices(jump_level,gamma);
+		self.dag_bitmap.indices_to_vertices(jump_level.unwrap(),gamma);
 		
-        Some(jump_level)
+        jump_level
     }
 
     /// Get the vertices that are in the final layer
@@ -211,43 +188,26 @@ impl Jump {
             return BitSet::new();
         }
 
-        self.levelset
+        self.dag_bitmap
             .get_level(self.last_level).clone()
     }
 
     /// Extend current level by reading non-jumpable edges inside the given
     /// level.
     fn extend_level(&mut self, level: usize, nonjump_adj: &Vec<Vec<usize>>) {
-		let levelset = &mut self.levelset;
-        let old_level = levelset.get_level(level).clone();
+		let dag_bitmap = &mut self.dag_bitmap;
+        let old_level = dag_bitmap.get_level(level).clone();
 
         for source in old_level.iter() {
             for &target in &nonjump_adj[source] {
-                levelset.register(level, target);
+                dag_bitmap.register(level, target);
             }
         }
     }
 
-    // Compute reach and rlevel, that is the effective jump points to all levels
-    // reachable from the current level.
-    pub fn init_reach(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
-//		println!("init_reach level: {}", level);
-		if level == 0 {
-			return;
-		}
-        let reach = &mut self.reach;
-        let rlevel = &mut self.rlevel;
-
-        let curr_level = self.levelset.get_level(level);
-
-		reach.push(Vec::new());
-
-		let mut new_jl = vec![std::usize::MAX;curr_level.len()];
-
-		let prev_level_len = self.levelset.get_level(level - 1).len();
-        let prev_level = self.levelset.get_level(level - 1);
-
+	fn compute_jl(&self, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>, jl: &Vec<usize>) -> Vec<usize> {
         let mut nonjump_vertices = BitSet::with_capacity(self.num_vertices);
+		let prev_level_no = self.levels.len() - 1;
 
         for source in prev_level.iter() {
             for &target in &nonjump_adj[source] {
@@ -261,19 +221,20 @@ impl Jump {
 			t_to_i[q]=i;
 		}
 
+		let mut new_jl = vec![std::usize::MAX;curr_level.len()];
 
         // Register jumpable transitions from this level to the next one
         for (source_index,source) in prev_level.iter().enumerate() {
             // Notice that `source_jl` can be 0, however, if it is not in
             // nonjump_vertices it is sure that it is not 0 since it was
             // necessary added by following an atomic transition.
-            let source_jl = self.jl[level-1][source_index];
+            let source_jl = jl[source_index];
 
             for &target in &jump_adj[source] {
 				let target_index=t_to_i[target];
 				if target_index!=std::usize::MAX {
                 	if nonjump_vertices.contains(source) {
-	                	new_jl[target_index]=level - 1;
+	                	new_jl[target_index]=prev_level_no;
 					} else {
 						if new_jl[target_index]==std::usize::MAX {
 							new_jl[target_index]=source_jl;
@@ -285,13 +246,12 @@ impl Jump {
             }
         }
 
-//		println!("Jump levels for level {}: {:?}", level, new_jl);
+		new_jl
+	}
 
-		self.jl.push(new_jl);
-
-
-
+	fn compute_reach(&self, level: usize, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>) -> (Matrix,Matrix) {
         // Compute the adjacency between current level and the previous one.
+		let prev_level_len = prev_level.len();
 		let mut prev_level_iter = prev_level.iter();
         let mut new_reach_t = Matrix::new(curr_level.len(), prev_level_len);
 		let mut targets = BitSet::with_capacity(self.num_vertices);
@@ -303,7 +263,7 @@ impl Jump {
 				targets.insert(target);
             }
 
-			self.levelset.vertices_to_indices(level,&mut targets);
+			self.dag_bitmap.vertices_to_indices(level,&mut targets);
 			for id in targets.iter() {
             	new_reach_t.insert(id, id_source);
 			}
@@ -311,25 +271,65 @@ impl Jump {
         }
 
 		// compute new_reach to point to reach_level
-		let new_reach = if self.reach_level == level - 1 {
+		let new_reach = if self.levels.last().unwrap().id == level - 1 {
 			new_reach_t.transpose()
 		} else {			
 			&self.reach_matrix * &new_reach_t
 		};
+
+		(new_reach,new_reach_t)
+
+	}
+
+	fn init_levels(&mut self) {
+		self.levels = Vec::new();
+		self.levels.push(Level{
+			id: 0,
+			jl: vec![0;self.dag_bitmap.get_level(0).len()],
+			reach: Vec::new(),
+		})
+	}
+
+    /// Compute reach and rlevel, that is the effective jump points to all levels
+    /// reachable from the current level.
+    pub fn init_reach(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
+		if level == 1 {
+			self.init_levels();
+		}
+
+		let prev_level_no = self.levels.len() - 1;
+
+        let curr_level = self.dag_bitmap.get_level(level);
+        let prev_level = self.dag_bitmap.get_level(level - 1);
+		let last_level = self.levels.last().unwrap();
+
+		let jl = if level == last_level.id + 1 {
+			&last_level.jl
+		} else {
+			&self.last_jl
+		};
+
+		let new_jl = self.compute_jl(&curr_level, &prev_level, jump_adj, nonjump_adj, jl);
+
+		let (new_reach, mut new_reach_t) = self.compute_reach(level, &curr_level, &prev_level, jump_adj);
 		
 		// no rlevel will point to this level
 		if curr_level.is_disjoint(&self.jump_vertices) && (level < self.last_level) {
 			self.reach_matrix = new_reach;
-			rlevel.insert(level, Vec::new());
+			self.last_jl = new_jl;
 			return;
 		} 
 
+		// we remove all levels that cannot be jumped to 
+		self.dag_bitmap.move_level(level, prev_level_no + 1);
+
 		// if necessary, update new_reach_t
-		if self.reach_level < level - 1 {
+		if self.levels.last().unwrap().id < level - 1 {
 			new_reach_t = new_reach.transpose();
 		} 
 
-		let mut rlev = self.jl[level].clone();
+		//all reachable levels
+		let mut rlev = new_jl.clone();
 
 		rlev.sort();
 		rlev.dedup();
@@ -338,54 +338,36 @@ impl Jump {
 			rlev.pop();
 		}
 						
-		if level < self.last_jump_level + self.jump_distance {
-		} else {
-			self.last_jump_level = level;
-			self.jump_levels.insert(level);
-		}
-
 		let last = rlev[rlev.len()-1];
-		let jump_levels = &self.jump_levels;
 
-		rlev.retain(|&x| (x==last) || (jump_levels.contains(x)));
+		rlev.retain(|&x| (x==last) || (x % self.jump_distance == 0));
 		
-		rlevel.push(rlev);
-
-//		println!("rlevel[{}].len(): {}", level, rlevel[level].len());
-
         // Compute by a dynamic algorithm the adjacency of current level with all its
         // sublevels.
-        for &sublevel in &rlevel[level] {
-            if sublevel == self.reach_level {
-				continue
-            }
+		let mut matrix_iterator = last_level.reach.iter();
 
-			let mut index = std::usize::MAX;
+		let mut matrices = Vec::with_capacity(rlev.len());
 
-			for (i,&x) in rlevel[self.reach_level].iter().enumerate() {
-				if x == sublevel {
-					index = i;
-					break;
+        for sublevel in rlev {
+            if sublevel == prev_level_no {
+				continue;
+            } else {
+				if let Some((_,matrix)) = matrix_iterator.find(|&&(l,_)| l == sublevel) {
+	            	matrices.push((sublevel, matrix * &new_reach_t));
+				} else {
+					panic!("Matrix not found for sublevel {} level: {}", sublevel, level);
 				}
 			}
-			
-			if index == std::usize::MAX {
-				panic!("Index not found for sublevel {} in rlevel[{}] level: {}", sublevel, self.reach_level, level);
-			}
-
-//			println!("sublevel: {}  index: {}", sublevel, index);
-
-            let new_matrix = &reach[self.reach_level][index] * &new_reach_t;
-
-//			println!("Compute matrix ({},{}) insert at index {}", sublevel, level, reach[level].len() );
-
-            reach[level].push(new_matrix);
         }
+		matrices.push((prev_level_no, new_reach));
 
-		self.reach_level = level;
+		let new_level = Level {
+			id: level,
+			jl: new_jl,
+			reach: matrices,
+		};
 
-
-		reach[level].push(new_reach);
+		self.levels.push(new_level);
     }
 
 	pub fn get_statistics(&self) -> (usize, usize, f64, usize, f64, usize, f64) {
@@ -395,11 +377,11 @@ impl Jump {
 	}
 
 	fn get_num_matrices(&self) -> usize {
-		self.reach.iter().fold(0, |acc, x| acc + x.len())
+		self.levels.iter().fold(0, |acc, x| acc + x.reach.len())
 	}
 
 	fn get_matrix_stats(&self) -> (usize, usize, f64, usize, f64) {
-		let (count, used_count, total_size, max_size, count_ones) = self.reach.iter().flatten().fold((0,0,0,0,0), |(count, used_count, total_size, max_size, count_ones), x| {
+		let (count, used_count, total_size, max_size, count_ones) = MatrixIterator::init(self).fold((0,0,0,0,0), |(count, used_count, total_size, max_size, count_ones), x| {
 			let size = x.get_width() * x.get_height();
 
 			(count + 1, used_count + if x.get_usage_count()>0 {1} else {0}, total_size + size, std::cmp::max(max_size, size), count_ones + x.count_ones())
@@ -409,57 +391,61 @@ impl Jump {
 	}
 
 	fn get_max_width(&self) -> usize {
-		self.jl.iter().fold(0, |acc, x| core::cmp::max(acc, x.len()))
+		self.levels.iter().fold(0, |acc, x| core::cmp::max(acc, x.reach.len()))
 	}
 
 	fn get_avg_width(&self) -> f64 {
-		self.jl.iter().fold(0, |acc, x| acc + x.len()) as f64 / self.jl.len() as f64
+		self.levels.iter().fold(0, |acc, x| acc + x.reach.len()) as f64 / self.levels.len() as f64
 	}
 
 	/// returns a rough estimation of the memory usage
 	pub fn get_memory_usage(&self) -> usize {
-		self.levelset.get_memory_usage() + self.get_matrix_usage() + self.get_rlevel_usage() + self.get_jl_usage()
+		self.dag_bitmap.get_memory_usage() + self.get_matrix_usage()
 	}
 
 	#[inline(never)]
 	fn get_matrix_usage(&self) -> usize {
-		self.reach.iter().fold(0, |acc, x| { 
-			acc + x.iter().fold(std::mem::size_of::<Vec<usize>>(), |acc2, y| acc2 + y.get_memory_usage())
+		self.levels.iter().fold(0, |acc, x| { 
+			acc + x.reach.iter().fold(std::mem::size_of::<Level>(), |acc2, (_,y)| acc2 + y.get_memory_usage())
 		})
-	}
-
-	#[inline(never)]
-	fn get_rlevel_usage(&self) -> usize {
-		self.rlevel.iter().fold(0, |acc, x| { acc + std::mem::size_of::<Vec<usize>>() + x.capacity() * std::mem::size_of::<usize>()})
-	}
-
-	#[inline(never)]
-	fn get_jl_usage(&self) -> usize {
-		self.jl.iter().fold(0, |acc, x| { acc + std::mem::size_of::<Vec<usize>>() + x.capacity() * std::mem::size_of::<usize>()})
 	}
 }
 
-impl fmt::Debug for Jump {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//        writeln!(f, "Levelset: {:?}", self.levelset);
-//		writeln!(f, "Rlevel: {:?}", self.rlevel);
-//		writeln!(f, "Reach: {:?}", self.reach);
-//		writeln!(f, "JumpLevel: {:?}", self.jl)
-		
-		let mut hist = vec![0;self.num_vertices];
-		let mut hist2 = vec![0;self.num_vertices];
-		let mut num_matrices = 0;
-		
-		for level in 0..self.last_level {
-			hist[self.levelset.get_level(level).len()]+=1;
-			hist2[self.rlevel[level].len()]+=1;
-			num_matrices+=self.rlevel[level].len();
+
+/// iterates over all matrices for statistical reasons
+struct MatrixIterator<'a> {
+	level_iterator: std::slice::Iter<'a,Level>,
+	matrix_iterator: std::slice::Iter<'a,(usize,Matrix)>,
+}
+
+impl<'a> MatrixIterator<'a> {
+	fn init(jump: &'a Jump) -> MatrixIterator {
+		let mut level_iterator = jump.levels.iter();
+		let mut matrix_iterator = level_iterator.next().unwrap().reach.iter();
+
+		MatrixIterator {
+			level_iterator,
+			matrix_iterator,
 		}
+	}
+}
 
-		writeln!(f,"Level histogramm: {:?}", hist)?;
-		writeln!(f,"RLevel histogramm: {:?}", hist2)?;
-		writeln!(f,"num_matrices: {}", num_matrices)
+impl<'a> Iterator for MatrixIterator<'a> {
+	type Item = &'a Matrix;
 
-//		writeln!(f,"{:?}", self.levelset)
-    }
+	fn next(&mut self) -> Option<&'a Matrix> {
+		match self.matrix_iterator.next() {
+			Some((_,matrix)) => Some(matrix),
+			None => {
+				if let Some(level) = self.level_iterator.next() {
+					self.matrix_iterator = level.reach.iter();
+				}
+
+				match self.matrix_iterator.next() {
+					None => None,
+					Some((_,matrix)) => Some(matrix),
+				}
+			}
+		}
+	}
 }

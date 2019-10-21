@@ -203,7 +203,7 @@ impl<'i, 't> IndexedDagIterator<'i, 't> {
 
         IndexedDagIterator {
             indexed_dag,
-            stack: vec![(indexed_dag.text.chars().count(), start, Vec::new())],
+            stack: vec![(indexed_dag.jump.num_levels()-1, start, Vec::new())],
 
             // `curr_next_level` is initialized empty, thus theses values will
             // be replaced before the first iteration.
@@ -236,7 +236,7 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
 
                 let mut new_mapping = self.curr_mapping.clone();
                 for marker in s_p {
-                    new_mapping.push((marker, self.curr_level));
+                    new_mapping.push((marker, self.indexed_dag.jump.get_pos(self.curr_level)));
                 }
 
                 if self.curr_level == 0
