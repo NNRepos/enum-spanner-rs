@@ -52,6 +52,7 @@ fn main() {
             Arg::with_name("benchmark-file")
                 .long("benchmark-file")
                 .help("Read a set of benchmarks from a file in JSON syntax. Implies --benchmark")
+                .takes_value(true)
         )
         .arg(
             Arg::with_name("regex")
@@ -173,21 +174,26 @@ fn main() {
     let benchmark_file = matches.value_of("benchmark-file");
 
     if benchmark_file != None {
-        
+        print!("[");
         let path = Path::new(benchmark_file.unwrap());
         let benchmarks = benchmark::BenchmarkCase::read_from_file(&path).unwrap();
+        let mut first = true;
         for benchmark in benchmarks {
+            println!("{}", if first {""} else {","});
             let result = benchmark.run().unwrap();
-            println!("{}", serde_json::to_string_pretty(&result).unwrap());
+            print!("{}", serde_json::to_string_pretty(&result).unwrap());
+            first = false;
         }
+        println!("\n]");
         return;
     }
 
     let regex_str = matches.value_of("regex").unwrap();
 
-    if (benchmark) {
+    if benchmark {
         let result = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy).run().unwrap();
-        println!("{}", serde_json::to_string_pretty(&result).unwrap());
+        println!("[\n{}\n]", serde_json::to_string_pretty(&result).unwrap());
+        return;
     }
 
 

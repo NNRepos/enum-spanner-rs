@@ -129,19 +129,21 @@ impl BenchmarkCase {
 
         let mut temp: Vec<u32> = Vec::with_capacity(k);
 
-        let mean_delays: Vec<u32> = (0..count_matches-1).map(|_| {
-            temp.clear();
-            for iter in &mut iters {
-                temp.push(*iter.next().unwrap());
-            }
+        let mean_delays: Vec<u32> = if count_matches == 0 {Vec::new()} else {
+            (0..count_matches-1).map(|_| {
+                temp.clear();
+                for iter in &mut iters {
+                    temp.push(*iter.next().unwrap());
+                }
 
-            *temp.iter().min().unwrap()
-        }).collect();
+                *temp.iter().min().unwrap()
+            }).collect()
+        };
 
         let mean = stats::mean(mean_delays.iter().map(|&x| x));
         let stddev = stats::stddev(mean_delays.iter().map(|&x| x));
-        let max: usize = *mean_delays.iter().max().unwrap() as usize;
-        let min = *mean_delays.iter().min().unwrap();
+        let max: usize = *mean_delays.iter().max().unwrap_or(&0) as usize;
+        let min = *mean_delays.iter().min().unwrap_or(&0);
         let mut hist = vec![0;max/1000 + 1];
         for &i in &mean_delays {
             hist[i as usize/1000]+=1;
