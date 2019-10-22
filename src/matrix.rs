@@ -33,7 +33,7 @@ impl<'a> Matrix
 			data = 0;
 		} else {
 //			panic!("Matrix size: {}", size);
-			let real_size = (size / (size_of::<usize>())*8) + 1;
+			let real_size = (size / (size_of::<usize>()*8)) + 1;
 			let v: Vec<usize> = vec![0; real_size as usize];
 			let data_ptr = v.as_ptr() as *mut usize;
 			data = data_ptr as usize;
@@ -251,7 +251,7 @@ impl Drop for Matrix {
 			unsafe {
 				let (_,size) = self.get_width_and_size();
 				let ptr = self.data as *mut usize;
-				let len = (size / (size_of::<usize>())*8) + 1;
+				let len = (size / (size_of::<usize>()*8)) + 1;
 				Vec::from_raw_parts(ptr, len, len);
 			}
 		}
