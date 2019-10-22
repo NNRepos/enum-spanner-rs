@@ -153,7 +153,7 @@ impl<'a> Matrix
 //			panic!("col_mul_in_place not working for width > 64");
 			let mut col: Vec<u64> = vec![0;padded_width/8 + 1];
 			let col_storage = column.get_ref().storage();
-			for i in 0..col_storage.len() {
+			for i in 0..std::cmp::min(col_storage.len(),padded_width/4 + 1)  {
 				if i%2 == 0 {
 					col[i/2] = col_storage[i].into();
 				} else {
