@@ -300,10 +300,11 @@ impl Jump {
         for id_source in 0..prev_level_len {
 			let source = prev_level_iter.next().unwrap();
             for &target in &jump_adj[source] {
-				targets.insert(target);
+				if t_to_i[target]!=std::usize::MAX {
+					targets.insert(t_to_i[target]);
+				}
             }
 
-			self.levelset.vertices_to_indices(level,&mut targets);
 			for id in targets.iter() {
             	new_reach_t.set(id, id_source, true);
 			}
