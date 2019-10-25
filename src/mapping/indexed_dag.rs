@@ -192,6 +192,7 @@ struct IndexedDagIterator<'i, 't> {
     curr_level:      usize,
     curr_mapping:    Vec<(&'i Marker, usize)>,
     curr_next_level: NextLevelIterator<'i>,
+    num_vars: usize
 }
 
 impl<'i, 't> IndexedDagIterator<'i, 't> {
@@ -210,6 +211,7 @@ impl<'i, 't> IndexedDagIterator<'i, 't> {
             curr_next_level: NextLevelIterator::empty(&indexed_dag.automaton),
             curr_level: usize::default(),
             curr_mapping: Vec::default(),
+            num_vars: indexed_dag.automaton.num_vars(),
         }
     }
 }
@@ -239,18 +241,20 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                     new_mapping.push((marker, self.indexed_dag.jump.get_pos(self.curr_level)));
                 }
 
-                if self.curr_level == 0
-                    && new_gamma.contains(self.indexed_dag.automaton.get_initial()) {
-                    // Re-align level indexes with utf8 coding
-                    let aligned_markers = new_mapping
-                        .into_iter()
-                        .map(|(marker, pos)| (marker.clone(), self.indexed_dag.char_offsets[pos]));
+                if self.curr_level == 0 {
+                    if new_gamma.contains(self.indexed_dag.automaton.get_initial()) {
+                        // Re-align level indexes with utf8 coding
+                        let aligned_markers = new_mapping
+                            .into_iter()
+                            .map(|(marker, pos)| (marker.clone(), self.indexed_dag.char_offsets[pos]));
 
-                    // Create the new mapping
-                    return Some(Mapping::from_markers(
-                        self.indexed_dag.text,
-                        aligned_markers,
-                    ));
+                        // Create the new mapping
+                        return Some(Mapping::from_markers(
+                            self.indexed_dag.text,
+                            aligned_markers,
+                            self.num_vars
+                        ));
+                    }
                 } else if let Some(jump_level) = self
                     .indexed_dag
                     .jump

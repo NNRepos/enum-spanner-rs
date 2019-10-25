@@ -19,7 +19,7 @@ pub struct NaiveEnum<'a, 't> {
     curr_state: Vec<(usize, CharIndices<'t>, Vec<(&'a Marker, usize)>)>,
 
     /// Keep track of already outputed values
-    curr_output: HashSet<Mapping<'t>>,
+    curr_output: Vec<Mapping<'t>>,
 }
 
 impl<'a, 't> NaiveEnum<'a, 't> {
@@ -28,7 +28,7 @@ impl<'a, 't> NaiveEnum<'a, 't> {
             automaton,
             text,
             curr_state: vec![(0, text.char_indices(), Vec::new())],
-            curr_output: HashSet::new(),
+            curr_output: Vec::new(),
         }
     }
 }
@@ -71,11 +71,11 @@ impl<'a, 't> Iterator for NaiveEnum<'a, 't> {
                     self.text,
                     assigns
                         .into_iter()
-                        .map(|(marker, pos)| (marker.clone(), pos)),
+                        .map(|(marker, pos)| (marker.clone(), pos)), 1
                 );
 
                 if !self.curr_output.contains(&mapping) {
-                    self.curr_output.insert(mapping.clone());
+                    self.curr_output.push(mapping.clone());
                     return Some(mapping);
                 }
             }

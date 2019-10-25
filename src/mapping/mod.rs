@@ -5,7 +5,6 @@ mod jump;
 mod levelset;
 
 use std::cmp;
-use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
@@ -24,15 +23,16 @@ pub use indexed_dag::IndexedDag;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Mapping<'t> {
     text: &'t str,
-    maps: HashMap<Variable, Range<usize>>,
+    maps: Vec<Option<(Variable, Range<usize>)>>,
 }
 
 impl<'t> Mapping<'t> {
     /// Returns a span that contains the whole matching area
     pub fn main_span(&self) -> Option<Range<usize>> {
-        self.maps.values().fold(None, |acc, range| match acc {
-            None => Some(range.clone()),
-            Some(acc_range) => Some(Range {
+        self.maps.iter().fold(None, |acc, range| match (&acc,range) {
+            (acc, None) => acc.clone(),
+            (None, Some((_,range))) => Some(range.clone()),
+            (Some(acc_range), Some((_,range))) => Some(Range {
                 start: cmp::min(range.start, acc_range.start),
                 end:   cmp::max(range.end, acc_range.end),
             }),
@@ -42,88 +42,58 @@ impl<'t> Mapping<'t> {
     pub fn iter_groups(&self) -> impl Iterator<Item = (&str, Range<usize>)> {
         self.maps
             .iter()
-            .map(|(key, range)| (key.get_name(), range.clone()))
+            .filter_map(|x| match x {
+                Some((key, range)) => Some((key.get_name(), range.clone())),
+                None => None
+            })
     }
 
     pub fn iter_groups_text(&self) -> impl Iterator<Item = (&str, &str)> {
         self.maps
             .iter()
-            .map(move |(key, range)| (key.get_name(), &self.text[range.clone()]))
+            .filter_map(move |x| match x {
+                Some((key, range)) => Some((key.get_name(), &self.text[range.clone()])),
+                None => None
+            })
     }
 
     /// Return a canonical mapping for a classic semantic with no group, which
     /// will assign the whole match to a group called "match".
     pub fn from_single_match(text: &'t str, range: Range<usize>) -> Mapping<'t> {
-        let mut maps = HashMap::new();
-        maps.insert(Variable::new("match".to_string(), 0), range);
+        let maps: Vec<Option<(Variable, Range<usize>)>> = vec![Some((Variable::new("match".to_string(), 0), range))];
         Mapping { text, maps }
     }
 
-    pub fn from_markers<T>(text: &'t str, marker_assigns: T) -> Mapping<'t>
+    pub fn from_markers<T>(text: &'t str, marker_assigns: T, num_vars: usize) -> Mapping<'t>
     where
         T: Iterator<Item = (Marker, usize)>,
     {
-        let mut dict: HashMap<Variable, (Option<usize>, Option<usize>)> = HashMap::new();
+        let mut maps: Vec<Option<(Variable, Range<usize>)>> = vec![None;num_vars];
 
         for (marker, pos) in marker_assigns {
-            let span = match dict.get(marker.variable()) {
-                None => (None, None),
-                Some(x) => *x,
+            let span = match &maps[marker.variable().get_id()] {
+                None => std::usize::MAX..std::usize::MAX,
+                Some((_,x)) => x.clone(),
             };
 
-            let span = match marker {
-                Marker::Open(_) => match span.0 {
-                    None => (Some(pos), span.1),
-                    Some(old_pos) => panic!(
-                        "Can't assign {} at position {}, already assigned to {}",
-                        marker, pos, old_pos
-                    ),
-                },
-                Marker::Close(_) => match span.1 {
-                    None => (span.0, Some(pos)),
-                    Some(old_pos) => panic!(
-                        "Can't assign {} at position {}, already assigned to {}",
-                        marker, pos, old_pos
-                    ),
-                },
-            };
-
-            dict.insert(marker.variable().clone(), span);
+            maps[marker.variable().get_id()] = Some((marker.variable().clone(),match marker {
+                Marker::Open(_) =>  pos..span.end,
+                Marker::Close(_) => span.start..pos,
+            }));
         }
-
-        let maps = dict
-            .into_iter()
-            .map(|(key, span)| match span {
-                (Some(i), Some(j)) if i <= j => (key, i..j),
-                (i,j) => panic!("Invalid mapping ordering for marker {}: {:?} .. {:?}", key, i, j),
-            })
-            .collect();
 
         Mapping { text, maps }
     }
 }
 
-impl<'t> std::hash::Hash for Mapping<'t> {
-    fn hash<'m, H: Hasher>(&'m self, state: &mut H) {
-        self.text.hash(state);
-
-        let mut assignments: Vec<_> = self.maps.iter().collect();
-        assignments.sort_by(|&a, &b| {
-            let key = |x: (&'m Variable, &Range<usize>)| (x.0, x.1.start, x.1.end);
-            key(a).cmp(&key(b))
-        });
-
-        for assignment in assignments {
-            assignment.hash(state);
-        }
-    }
-}
 
 impl<'t> fmt::Display for Mapping<'t> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (var, range) in self.maps.iter() {
-            // write!(f, "{}: {} ", var, &self.text[*start..*end]).unwrap();
-            write!(f, "{}: ({}, {}) ", var, range.start, range.end)?;
+        for span in self.maps.iter() {
+            match span {
+                Some((var, range)) => { write!(f, "{}: ({}, {}) ", var, range.start, range.end)?; },
+                None => {},
+            }
         }
 
         Ok(())

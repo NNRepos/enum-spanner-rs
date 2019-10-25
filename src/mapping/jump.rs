@@ -205,7 +205,7 @@ impl Jump {
         }
     }
 
-	fn compute_jl(&self, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>, jl: &Vec<usize>) -> Vec<usize> {
+	fn compute_jl(&self, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>, jl: &Vec<usize>, t_to_i: &Vec<usize>) -> Vec<usize> {
         let mut nonjump_vertices = BitSet::with_capacity(self.num_vertices);
 		let prev_level_no = self.levels.len() - 1;
 
@@ -214,12 +214,6 @@ impl Jump {
                 nonjump_vertices.insert(target);
             }
         }
-
-		let mut t_to_i = vec![std::usize::MAX; self.num_vertices];
-		
-		for (i,q) in curr_level.iter().enumerate() {
-			t_to_i[q]=i;
-		}
 
 		let mut new_jl = vec![std::usize::MAX;curr_level.len()];
 
@@ -249,7 +243,7 @@ impl Jump {
 		new_jl
 	}
 
-	fn compute_reach(&self, level: usize, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>) -> (Matrix,Matrix) {
+	fn compute_reach(&self, level: usize, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>, t_to_i: &Vec<usize>) -> (Matrix,Matrix) {
         // Compute the adjacency between current level and the previous one.
 		let prev_level_len = prev_level.len();
 		let mut prev_level_iter = prev_level.iter();
@@ -260,10 +254,11 @@ impl Jump {
         for id_source in 0..prev_level_len {
 			let source = prev_level_iter.next().unwrap();
             for &target in &jump_adj[source] {
-				targets.insert(target);
+				if t_to_i[target]!=std::usize::MAX {
+					targets.insert(t_to_i[target]);
+				}
             }
 
-			self.dag_bitmap.vertices_to_indices(level,&mut targets);
 			for id in targets.iter() {
             	new_reach_t.insert(id, id_source);
 			}
@@ -309,9 +304,15 @@ impl Jump {
 			&self.last_jl
 		};
 
-		let new_jl = self.compute_jl(&curr_level, &prev_level, jump_adj, nonjump_adj, jl);
+		let mut t_to_i = vec![std::usize::MAX; self.num_vertices];
+		
+		for (i,q) in curr_level.iter().enumerate() {
+			t_to_i[q]=i;
+		}
 
-		let (new_reach, mut new_reach_t) = self.compute_reach(level, &curr_level, &prev_level, jump_adj);
+		let new_jl = self.compute_jl(&curr_level, &prev_level, jump_adj, nonjump_adj, jl, &t_to_i);
+
+		let (new_reach, mut new_reach_t) = self.compute_reach(level, &curr_level, &prev_level, jump_adj, &t_to_i);
 		
 		// no rlevel will point to this level
 		if curr_level.is_disjoint(&self.jump_vertices) && (level < self.last_level) {
