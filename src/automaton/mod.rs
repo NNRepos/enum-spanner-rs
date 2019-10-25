@@ -65,6 +65,10 @@ impl Automaton {
         automaton
     }
 
+    pub fn num_vars(&self) -> usize {
+        self.transitions.iter().fold(0, |acc, (_,x,_)| std::cmp::max(acc,x.get_marker().map(|m| m.get_id()).unwrap_or(0))) + 1
+    }
+
     pub fn get_initial(&self) -> usize {
         0
     }

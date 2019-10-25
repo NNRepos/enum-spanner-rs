@@ -192,6 +192,7 @@ struct IndexedDagIterator<'i, 't> {
     curr_level:      usize,
     curr_mapping:    Vec<(&'i Marker, usize)>,
     curr_next_level: NextLevelIterator<'i>,
+    num_vars: usize
 }
 
 impl<'i, 't> IndexedDagIterator<'i, 't> {
@@ -210,6 +211,7 @@ impl<'i, 't> IndexedDagIterator<'i, 't> {
             curr_next_level: NextLevelIterator::empty(&indexed_dag.automaton),
             curr_level: usize::default(),
             curr_mapping: Vec::default(),
+            num_vars: indexed_dag.automaton.num_vars(),
         }
     }
 }
@@ -250,6 +252,7 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                         return Some(Mapping::from_markers(
                             self.indexed_dag.text,
                             aligned_markers,
+                            self.num_vars
                         ));
                     }
                 } else if let Some(jump_level) = self
