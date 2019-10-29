@@ -155,7 +155,7 @@ impl Jump {
     pub fn jump(&self, level_id: usize, gamma: &mut BitSet) -> Option<usize>
     {
 		
-		let level = &self.levels[level_id];
+		let mut level = &self.levels[level_id];
 		self.dag_bitmap.vertices_to_indices(level_id,gamma);
         let jump_level = gamma
             .iter()
@@ -172,6 +172,7 @@ impl Jump {
 			if let Some((l, matrix)) = level.reach.iter().find(|&&(id,_)| id>=jump_level.unwrap()) {
 				matrix.col_mul_inplace(gamma);
 				current_level = *l;
+				level = &self.levels[current_level];
 			} else {
 				panic!("No suitable matrix found for jump.");
 			}
