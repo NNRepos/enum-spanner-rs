@@ -6,6 +6,7 @@ use super::super::progress::Progress;
 use super::jump::Jump;
 use bit_set::BitSet;
 use serde::{Deserialize, Serialize};
+use std::time::{Instant, Duration};
 
 //  ___           _                   _ ____
 // |_ _|_ __   __| | _____  _____  __| |  _ \  __ _  __ _
@@ -24,6 +25,9 @@ pub struct IndexedDag<'t> {
     text:         &'t str,
     jump:         Jump,
     char_offsets: Vec<usize>,
+    create_dag_time: Option<Duration>,
+    trim_time: Option<Duration>,
+    index_time: Option<Duration>,
 }
 
 #[derive(Eq, PartialEq)]
@@ -68,6 +72,8 @@ impl<'t> IndexedDag<'t> {
 
         let closure_for_assignations = automaton.get_closure_for_assignations().clone();
 
+        let start_time = Instant::now();
+
         let chars: Vec<_> = text.chars().collect();
         let mut progress = Progress::from_iter(chars.into_iter())
             .auto_refresh(toggle_progress == ToggleProgress::Enabled);
@@ -81,7 +87,13 @@ impl<'t> IndexedDag<'t> {
             }
         }
 
+        let create_dag_time = Some(start_time.elapsed());
+
 //		println!("Levelset: {:#?}", jump);
+
+        let start_time = Instant::now();
+        let mut trim_time = None;
+        let mut index_time = None;
 
         if trimming_strategy == TrimmingStrategy::FullTrimming {
             jump.trim_last_level(&automaton.finals, &closure_for_assignations);
@@ -105,6 +117,9 @@ impl<'t> IndexedDag<'t> {
                 }
             }
 
+            trim_time = Some(start_time.elapsed());
+            let start_time = Instant::now();
+
 //		println!("Levelset: {:#?}", jump);
 
             let chars: Vec<_> = text.chars().collect();
@@ -117,6 +132,8 @@ impl<'t> IndexedDag<'t> {
                 jump.init_reach(level, adj_for_char, &closure_for_assignations);
 			    level+=1;
 	        }
+
+            index_time = Some(start_time.elapsed());
 		}
 
 //		println!("Levelset: {:#?}", jump);
@@ -126,11 +143,22 @@ impl<'t> IndexedDag<'t> {
             text,
             jump,
             char_offsets,
+            create_dag_time,
+            trim_time,
+            index_time,
         }
     }
 
     pub fn iter<'i>(&'i self) -> impl Iterator<Item = Mapping<'t>> + 'i {
         IndexedDagIterator::init(self)
+    }
+
+    pub fn num_levels(&self) -> usize {
+        self.jump.num_levels()
+    }
+
+    pub fn get_times(&self) -> (Option<Duration>, Option<Duration>, Option<Duration>) {
+        (self.create_dag_time,self.trim_time,self.index_time)
     }
 
     fn next_level<'a>(&'a self, gamma: BitSet) -> NextLevelIterator<'a> {
@@ -164,7 +192,7 @@ impl<'t> IndexedDag<'t> {
         NextLevelIterator::explore(&self.automaton, expected_markers, gamma)
     }
 
-    pub fn get_memory_usage(&self) -> usize {
+    pub fn get_memory_usage(&self) -> (usize,usize,usize) {
         self.jump.get_memory_usage()
     }
 

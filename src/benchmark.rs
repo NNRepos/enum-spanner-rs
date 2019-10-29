@@ -27,6 +27,9 @@ pub struct BenchmarkResult {
     width_max: usize,
     compile_regex: f64,
     preprocess: f64,
+    create_dag: Option<f64>,
+    trim_dag: Option<f64>,
+    index_dag: Option<f64>,
     enumerate: f64,
     delay_min: f64,
     delay_max: f64,
@@ -34,11 +37,15 @@ pub struct BenchmarkResult {
     delay_stddev: f64,
     delay_hist: Vec<u32>,
     memory_usage: usize,
+    memory_dag: usize,
+    memory_matrices: usize,
+    memory_jump_level: usize,
     num_matrices: usize,
     num_used_matrices: usize,
     matrix_avg_size: f64,
     matrix_max_size: usize,
-    matrix_avg_density: f64
+    matrix_avg_density: f64,
+    num_levels: usize,
 }
 
 impl BenchmarkCase {
@@ -151,6 +158,10 @@ impl BenchmarkCase {
 
         let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = compiled_matches.get_statistics();
 
+        let (create_dag, trim_dag, index_dag) = compiled_matches.get_times();
+
+        let (dag_mem, matrices_mem, jump_level_mem) = compiled_matches.get_memory_usage();
+
         Ok(BenchmarkResult {
             benchmark: self.clone(),
             num_results: count_matches,
@@ -169,7 +180,14 @@ impl BenchmarkCase {
             delay_avg: mean as f64 / 1000000000.0,
             delay_stddev: stddev as f64 / 1000000000.0,
             delay_hist: hist,
-            memory_usage: compiled_matches.get_memory_usage(),
+            memory_usage: dag_mem + matrices_mem + jump_level_mem,
+            memory_dag: dag_mem,
+            memory_matrices: matrices_mem,
+            memory_jump_level: jump_level_mem,
+            num_levels: compiled_matches.num_levels(),
+            create_dag: create_dag.map(|t| t.as_nanos() as f64/1000000000.0),
+            trim_dag: trim_dag.map(|t| t.as_nanos() as f64/1000000000.0),
+            index_dag: index_dag.map(|t| t.as_nanos() as f64/1000000000.0),
         })
     }   
 }

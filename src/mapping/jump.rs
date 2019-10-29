@@ -401,15 +401,20 @@ impl Jump {
 	}
 
 	/// returns a rough estimation of the memory usage
-	pub fn get_memory_usage(&self) -> usize {
-		self.dag_bitmap.get_memory_usage() + self.get_matrix_usage()
+	pub fn get_memory_usage(&self) -> (usize, usize, usize) {
+		(self.dag_bitmap.get_memory_usage(), self.get_matrix_usage(), self.get_jl_usage())
 	}
 
 	#[inline(never)]
 	fn get_matrix_usage(&self) -> usize {
 		self.levels.iter().fold(0, |acc, x| { 
-			acc + x.reach.iter().fold(std::mem::size_of::<Level>(), |acc2, (_,y)| acc2 + y.get_memory_usage())
+			acc + x.reach.iter().fold(std::mem::size_of::<Level>() - std::mem::size_of::<Vec<usize>>(), |acc2, (_,y)| acc2 + y.get_memory_usage())
 		})
+	}
+
+	#[inline(never)]
+	fn get_jl_usage(&self) -> usize {
+		self.levels.iter().fold(0, |acc, x| acc + std::mem::size_of::<Vec<usize>>() + x.jl.capacity()*std::mem::size_of::<usize>())
 	}
 }
 
