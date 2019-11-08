@@ -35,7 +35,7 @@ impl LevelSet {
     }
 
     pub fn truncate(&mut self, num_levels: usize) {
-        self.levels.truncate(num_levels * self.effective_level_size);
+        self.levels.truncate(num_levels * self.effective_level_size*32);
         self.levels.shrink_to_fit();
     }
 
