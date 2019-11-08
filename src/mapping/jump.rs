@@ -324,6 +324,11 @@ impl Jump {
 
 		// we remove all levels that cannot be jumped to 
 		self.dag_bitmap.move_level(level, prev_level_no + 1);
+        if (level == self.last_level) {
+            self.last_level = prev_level_no + 1;
+            self.dag_bitmap.truncate(prev_level_no + 2);
+        }
+
 
 		// if necessary, update new_reach_t
 		if self.levels.last().unwrap().id < level - 1 {

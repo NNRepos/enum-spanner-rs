@@ -34,6 +34,11 @@ impl LevelSet {
         }
     }
 
+    pub fn truncate(&mut self, num_levels: usize) {
+        self.levels.truncate(num_levels * self.effective_level_size);
+        self.levels.shrink_to_fit();
+    }
+
 	pub fn move_level(&mut self, level: usize, target: usize) {
 		unsafe {
 			let levels_storage = self.levels.storage_mut();
