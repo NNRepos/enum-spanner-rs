@@ -40,6 +40,7 @@ pub struct BenchmarkResult {
     memory_dag: usize,
     memory_matrices: usize,
     memory_jump_level: usize,
+    memory_dag_max: usize,
     num_matrices: usize,
     num_used_matrices: usize,
     matrix_avg_size: f64,
@@ -160,7 +161,7 @@ impl BenchmarkCase {
 
         let (create_dag, trim_dag, index_dag) = compiled_matches.get_times();
 
-        let (dag_mem, matrices_mem, jump_level_mem) = compiled_matches.get_memory_usage();
+        let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = compiled_matches.get_memory_usage();
 
         Ok(BenchmarkResult {
             benchmark: self.clone(),
@@ -181,6 +182,7 @@ impl BenchmarkCase {
             delay_stddev: stddev as f64 / 1000000000.0,
             delay_hist: hist,
             memory_usage: dag_mem + matrices_mem + jump_level_mem,
+            memory_dag_max: dag_mem_max,
             memory_dag: dag_mem,
             memory_matrices: matrices_mem,
             memory_jump_level: jump_level_mem,

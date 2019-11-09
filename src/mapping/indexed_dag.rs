@@ -192,7 +192,7 @@ impl<'t> IndexedDag<'t> {
         NextLevelIterator::explore(&self.automaton, expected_markers, gamma)
     }
 
-    pub fn get_memory_usage(&self) -> (usize,usize,usize) {
+    pub fn get_memory_usage(&self) -> (usize,usize,usize,usize) {
         self.jump.get_memory_usage()
     }
 

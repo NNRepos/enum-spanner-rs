@@ -52,6 +52,8 @@ pub struct Jump {
 	
 	/// distance between jump targets
 	jump_distance: usize,
+
+	dag_mem_before_trunk: usize,
 }
 
 impl Jump {
@@ -68,6 +70,7 @@ impl Jump {
 			reach_matrix:		 Matrix::new(1,1),
 			jump_distance:       jump_distance,
 			last_jl: Vec::new(),
+			dag_mem_before_trunk: 0,
         };
 
         for state in initial_level {
@@ -325,6 +328,7 @@ impl Jump {
 		// we remove all levels that cannot be jumped to 
 		self.dag_bitmap.move_level(level, prev_level_no + 1);
         if (level == self.last_level) {
+			self.dag_mem_before_trunk = self.dag_bitmap.get_memory_usage();
             self.last_level = prev_level_no + 1;
             self.dag_bitmap.truncate(prev_level_no + 2);
         }
@@ -406,8 +410,8 @@ impl Jump {
 	}
 
 	/// returns a rough estimation of the memory usage
-	pub fn get_memory_usage(&self) -> (usize, usize, usize) {
-		(self.dag_bitmap.get_memory_usage(), self.get_matrix_usage(), self.get_jl_usage())
+	pub fn get_memory_usage(&self) -> (usize, usize, usize, usize) {
+		(self.dag_mem_before_trunk, self.dag_bitmap.get_memory_usage(), self.get_matrix_usage(), self.get_jl_usage())
 	}
 
 	#[inline(never)]
