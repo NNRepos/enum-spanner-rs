@@ -133,12 +133,11 @@ where
 
 impl<T, U> Progress<T, U>
 where
-    T: std::iter::ExactSizeIterator + Iterator<Item = U>,
+    T: std::iter::Iterator<Item = U>,
 {
     pub fn from_iter(iterator: T) -> Progress<T, U> {
         let max_iterations = iterator
-            .len()
-            .try_into()
+            .size_hint().1
             .expect("Impossible to init progress bar for objects larger than a 64 bits integer");
 
         Progress {

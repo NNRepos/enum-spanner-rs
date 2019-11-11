@@ -49,11 +49,16 @@ pub struct Jump {
 	/// init_reach was called on. Is empty if i==j.
 	reach_matrix: Matrix,
 	last_jl: Vec<usize>,
+	last_level_was_jump_target: bool,
 	
 	/// distance between jump targets
 	jump_distance: usize,
 
 	dag_mem_before_trunk: usize,
+
+	/// stores the offset between unicode charcter points and the position in the input string.
+	/// is always 0 if the input is ASCII
+	offset: usize,
 }
 
 impl Jump {
@@ -71,6 +76,8 @@ impl Jump {
 			jump_distance:       jump_distance,
 			last_jl: Vec::new(),
 			dag_mem_before_trunk: 0,
+			last_level_was_jump_target: true,
+			offset: 0
         };
 
         for state in initial_level {
@@ -82,6 +89,10 @@ impl Jump {
 
         jump
     }
+
+	pub fn get_last_level(&self) -> usize {
+		self.last_level
+	}
 
 	pub fn num_levels(&self) -> usize {
 		self.levels.len()
@@ -270,7 +281,7 @@ impl Jump {
         }
 
 		// compute new_reach to point to reach_level
-		let new_reach = if self.levels.last().unwrap().id == level - 1 {
+		let new_reach = if self.last_level_was_jump_target {
 			new_reach_t.transpose()
 		} else {			
 			&self.reach_matrix * &new_reach_t
@@ -291,7 +302,7 @@ impl Jump {
 
     /// Compute reach and rlevel, that is the effective jump points to all levels
     /// reachable from the current level.
-    pub fn init_reach(&mut self, level: usize, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
+    pub fn init_reach(&mut self, level: usize, character: char, jump_adj: &Vec<Vec<usize>>, nonjump_adj: &Vec<Vec<usize>>) {
 		if level == 1 {
 			self.init_levels();
 		}
@@ -302,7 +313,7 @@ impl Jump {
         let prev_level = self.dag_bitmap.get_level(level - 1);
 		let last_level = self.levels.last().unwrap();
 
-		let jl = if level == last_level.id + 1 {
+		let jl = if self.last_level_was_jump_target {
 			&last_level.jl
 		} else {
 			&self.last_jl
@@ -322,6 +333,8 @@ impl Jump {
 		if curr_level.is_disjoint(&self.jump_vertices) && (level < self.last_level) {
 			self.reach_matrix = new_reach;
 			self.last_jl = new_jl;
+			self.last_level_was_jump_target = false;
+			self.offset += character.len_utf8() - 1;
 			return;
 		} 
 
@@ -335,7 +348,7 @@ impl Jump {
 
 
 		// if necessary, update new_reach_t
-		if self.levels.last().unwrap().id < level - 1 {
+		if !self.last_level_was_jump_target {
 			new_reach_t = new_reach.transpose();
 		} 
 
@@ -372,13 +385,17 @@ impl Jump {
         }
 		matrices.push((prev_level_no, new_reach));
 
+		self.offset += character.len_utf8() - 1;
+
 		let new_level = Level {
-			id: level,
+			id: level+self.offset,
 			jl: new_jl,
 			reach: matrices,
 		};
 
 		self.levels.push(new_level);
+
+		self.last_level_was_jump_target = true;
     }
 
 	pub fn get_statistics(&self) -> (usize, usize, f64, usize, f64, usize, f64) {

@@ -24,7 +24,6 @@ pub struct IndexedDag<'t> {
     automaton:    Automaton,
     text:         &'t str,
     jump:         Jump,
-    char_offsets: Vec<usize>,
     create_dag_time: Option<Duration>,
     trim_time: Option<Duration>,
     index_time: Option<Duration>,
@@ -52,14 +51,6 @@ impl<'t> IndexedDag<'t> {
 		jump_distance: usize,
         trimming_strategy: TrimmingStrategy,
     ) -> IndexedDag {
-        // Index utf8 chars, the ith char being represented by
-        // `text[char_offsets[i]..char_offsets[i+1]]`
-        let char_offsets = text
-            .char_indices()
-            .map(|(index, _)| index)
-            .chain(iter::once(text.len()))
-            .collect();
-
         // Compute the jump function
         let mut jump = Jump::new(
             iter::once(automaton.get_initial()),
@@ -74,8 +65,8 @@ impl<'t> IndexedDag<'t> {
 
         let start_time = Instant::now();
 
-        let chars: Vec<_> = text.chars().collect();
-        let mut progress = Progress::from_iter(chars.into_iter())
+        let chars = text.chars();
+        let mut progress = Progress::from_iter(chars)
             .auto_refresh(toggle_progress == ToggleProgress::Enabled);
 
         while let Some(curr_char) = progress.next() {
@@ -104,10 +95,9 @@ impl<'t> IndexedDag<'t> {
 //		println!("Levelset: {:#?}", jump);
 			
             if trimming_strategy != TrimmingStrategy::NoTrimming {
-                let chars: Vec<_> = text.chars().collect();
-                let nb_levels = chars.len();
-                let mut level = nb_levels;
-                let mut progress = Progress::from_iter(chars.into_iter().rev())
+                let chars = text.chars();
+                let mut level = jump.get_last_level();
+                let mut progress = Progress::from_iter(chars.rev())
                     .auto_refresh(toggle_progress == ToggleProgress::Enabled);
             
                 while let Some(curr_char) = progress.next() {
@@ -122,14 +112,14 @@ impl<'t> IndexedDag<'t> {
 
 //		println!("Levelset: {:#?}", jump);
 
-            let chars: Vec<_> = text.chars().collect();
-            let mut progress = Progress::from_iter(chars.into_iter())
+            let chars = text.chars();
+            let mut progress = Progress::from_iter(chars)
                 .auto_refresh(toggle_progress == ToggleProgress::Enabled);
 		    let mut level = 1;
 
             while let Some(curr_char) = progress.next() {
                 let adj_for_char = automaton.get_adj_for_char(curr_char);
-                jump.init_reach(level, adj_for_char, &closure_for_assignations);
+                jump.init_reach(level, curr_char, adj_for_char, &closure_for_assignations);
 			    level+=1;
 	        }
 
@@ -142,7 +132,6 @@ impl<'t> IndexedDag<'t> {
             automaton,
             text,
             jump,
-            char_offsets,
             create_dag_time,
             trim_time,
             index_time,
@@ -274,7 +263,7 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                         // Re-align level indexes with utf8 coding
                         let aligned_markers = new_mapping
                             .into_iter()
-                            .map(|(marker, pos)| (marker.clone(), self.indexed_dag.char_offsets[pos]));
+                            .map(|(marker, pos)| (marker.clone(), pos));
 
                         // Create the new mapping
                         return Some(Mapping::from_markers(
