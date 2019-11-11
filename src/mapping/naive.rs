@@ -11,6 +11,7 @@ use super::{Mapping, Marker};
 pub struct NaiveEnum<'a, 't> {
     automaton: &'a Automaton,
     text:      &'t str,
+    num_vars: usize,
 
     /// Holds current positions of the runs as a stack of:
     ///  - current state on the automata
@@ -19,16 +20,17 @@ pub struct NaiveEnum<'a, 't> {
     curr_state: Vec<(usize, CharIndices<'t>, Vec<(&'a Marker, usize)>)>,
 
     /// Keep track of already outputed values
-    curr_output: Vec<Mapping<'t>>,
+    curr_output: HashSet<Mapping<'t>>,
 }
 
 impl<'a, 't> NaiveEnum<'a, 't> {
     pub fn new(automaton: &'a Automaton, text: &'t str) -> NaiveEnum<'a, 't> {
         NaiveEnum {
             automaton,
+            num_vars: automaton.num_vars(),
             text,
             curr_state: vec![(0, text.char_indices(), Vec::new())],
-            curr_output: Vec::new(),
+            curr_output: HashSet::new(),
         }
     }
 }
@@ -71,11 +73,12 @@ impl<'a, 't> Iterator for NaiveEnum<'a, 't> {
                     self.text,
                     assigns
                         .into_iter()
-                        .map(|(marker, pos)| (marker.clone(), pos)), 1
+                        .map(|(marker, pos)| (marker.clone(), pos)),
+                    self.num_vars,
                 );
 
                 if !self.curr_output.contains(&mapping) {
-                    self.curr_output.push(mapping.clone());
+                    self.curr_output.insert(mapping.clone());
                     return Some(mapping);
                 }
             }

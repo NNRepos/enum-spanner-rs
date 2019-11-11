@@ -100,6 +100,17 @@ impl<'t> fmt::Display for Mapping<'t> {
     }
 }
 
+impl<'t> std::hash::Hash for Mapping<'t> {
+    fn hash<'m, H: Hasher>(&'m self, state: &mut H) {
+        for assignment in &self.maps {
+            assignment.hash(state);
+        }
+    }
+}
+ 
+
+
+
 // __     __         _       _     _
 // \ \   / /_ _ _ __(_) __ _| |__ | | ___
 //  \ \ / / _` | '__| |/ _` | '_ \| |/ _ \
