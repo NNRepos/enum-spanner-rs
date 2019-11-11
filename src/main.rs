@@ -179,8 +179,13 @@ fn main() {
         let benchmarks = benchmark::BenchmarkCase::read_from_file(&path).unwrap();
         let mut first = true;
         for benchmark in benchmarks {
+            let result;
             println!("{}", if first {""} else {","});
-            let result = benchmark.run().unwrap();
+            if use_naive_quadratic {
+                result = benchmark.run_quadratic().unwrap();
+            } else {
+                result = benchmark.run().unwrap();
+            }
             print!("{}", serde_json::to_string_pretty(&result).unwrap());
             first = false;
         }

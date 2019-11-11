@@ -84,7 +84,23 @@ impl Automaton {
     /// Get the adjacency list representing transitions of the automaton that
     /// can be used when reading a given char.
     pub fn get_adj_for_char(&mut self, x: char) -> &Vec<Vec<usize>> {
-        self.adj_for_char.get(&x).unwrap()
+        let nb_states = self.get_nb_states();
+        let adj_for_char = &mut self.adj_for_char;
+        let transitions = &self.transitions;
+
+        adj_for_char.entry(x).or_insert_with(|| {
+            let mut res = vec![Vec::new(); nb_states];
+
+            for (source, label, target) in transitions {
+                if let Label::Atom(atom) = &**label {
+                    if atom.is_match(&x) {
+                        res[*source].push(*target);
+                    }
+                }
+            }
+
+            res
+        })
     }
 
     pub fn get_rev_adj_for_char_with_closure(&self, x: char) -> &Vec<Vec<usize>> {

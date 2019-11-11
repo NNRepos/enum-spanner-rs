@@ -3,6 +3,7 @@ use std::path::Path;
 use std::io::prelude::*;
 use std::time::Instant;
 use super::mapping::indexed_dag::TrimmingStrategy;
+use super::mapping::Mapping;
 
 use serde::{Deserialize, Serialize};
 
@@ -79,6 +80,102 @@ impl BenchmarkCase {
         }
     }
 
+    pub fn run_quadratic(&self) -> Result<BenchmarkResult,std::io::Error> {
+        let mut input = String::new();
+
+        // Read input file content.
+        File::open(&self.filename)?.take(match self.length {
+            Some(l) => l,
+            None => std::u64::MAX,
+        }).read_to_string(&mut input)?;
+
+        // Compile the regex.
+        let timer = Instant::now();
+        let iterator = regex::naive::NaiveEnumQuadratic::new(&self.regex, &input);
+        let compile_regex = timer.elapsed();
+
+        // Count matches.
+        let timer = Instant::now();
+        let count_matches = iterator.count();
+        let enumerate = timer.elapsed();
+
+        // detailed delay measurement
+        let k=10;
+        let mut delays = Vec::with_capacity(k);
+        // Do k iterations to get rid of outliers
+        for _ in 0..k {
+            let start_time = Instant::now();
+            let mut times = Vec::with_capacity(count_matches);
+            let _ = regex::naive::NaiveEnumQuadratic::new(&self.regex, &input).map(|x| {
+                times.push(start_time.elapsed().subsec_nanos());
+
+                x
+            }).count();
+
+            let mut last = 0;
+            let delay: Vec<u32> = times.iter().map(|&d| {let i = ((d + 1000000000) - last) % 1000000000; last = d; i}).skip(1).collect();
+
+            delays.push(delay);
+        }
+
+        let mut iters = Vec::with_capacity(k);
+        for i in &delays {
+            iters.push(i.iter());
+        }
+
+        let mut temp: Vec<u32> = Vec::with_capacity(k);
+
+        let mean_delays: Vec<u32> = if count_matches == 0 {Vec::new()} else {
+            (0..count_matches-1).map(|_| {
+                temp.clear();
+                for iter in &mut iters {
+                    temp.push(*iter.next().unwrap());
+                }
+
+                *temp.iter().min().unwrap()
+            }).collect()
+        };
+
+        let mean = stats::mean(mean_delays.iter().map(|&x| x));
+        let stddev = stats::stddev(mean_delays.iter().map(|&x| x));
+        let max: usize = *mean_delays.iter().max().unwrap_or(&0) as usize;
+        let min = *mean_delays.iter().min().unwrap_or(&0);
+        let mut hist = vec![0;max/100000 + 1];
+        for &i in &mean_delays {
+            hist[i as usize/100000]+=1;
+        }
+
+        Ok(BenchmarkResult {
+            benchmark: self.clone(),
+            num_results: count_matches,
+            num_matrices: 0,
+            num_used_matrices: 0,
+            matrix_avg_size:0.0 ,
+            matrix_max_size: 0,
+            matrix_avg_density: 0.0,
+            width_avg: 0.0,
+            width_max: 0,
+            compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
+            preprocess: 0.0,
+            enumerate: enumerate.as_nanos() as f64/1000000000.0,
+            delay_min: min as f64 / 1000000000.0,
+            delay_max: max as f64 / 1000000000.0,
+            delay_avg: mean as f64 / 1000000000.0,
+            delay_stddev: stddev as f64 / 1000000000.0,
+            delay_hist: hist,
+            memory_usage: 0,
+            memory_dag_max: 0,
+            memory_dag: 0,
+            memory_matrices: 0,
+            memory_jump_level: 0,
+            num_levels: 0,
+            create_dag: None,
+            trim_dag: None,
+            index_dag: None,
+        })
+
+    }
+
     pub fn run(&self) -> Result<BenchmarkResult,std::io::Error> {   
         let mut input = String::new();
         let trimming_strategy = match self.trimming {
@@ -112,6 +209,7 @@ impl BenchmarkCase {
         let count_matches = compiled_matches.iter().count();
         let enumerate = timer.elapsed();
 
+        // detailed delay measurement
         let k=10;
         let mut delays = Vec::with_capacity(k);
         // Do k iterations to get rid of outliers
