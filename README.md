@@ -9,7 +9,9 @@ regular expression (including overlapping substrings).
 Use at your own risk.**
 
 It is the reimplementation of
-[the previous Python prototype](https://github.com/remi-dupre/enum-spanner/).
+[the previous Python prototype](https://github.com/remi-dupre/enum-spanner/) and
+was forked from
+[the earlier version by Rémi Dupré](https://github.com/remi-dupre/enum-spanner-rs/).
 
 Requirements
 ------------
