@@ -122,7 +122,7 @@ fn main() {
             .possible_value("full")
             .possible_value("partial")
             .possible_value("no")
-            .help("Should the DAG be trimmed? Usefull for benchmarking the effect of trimming."),
+            .help("Should the DAG be trimmed? Useful for benchmarking the effect of trimming."),
         )
         .get_matches();
 

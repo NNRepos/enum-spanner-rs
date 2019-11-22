@@ -1,4 +1,4 @@
-/// Implementation of the Glushkov's construction algorithm to build a
+/// Implementation of Glushkov's algorithm to build a
 /// linearized language out of a regexp's HIR, and finaly convert this
 /// expression to a variable NFA.
 use std::collections::LinkedList;

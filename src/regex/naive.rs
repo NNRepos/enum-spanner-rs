@@ -1,7 +1,7 @@
-//< Implementations for naive algorithms that outputs all matching subwords of a
+//< Implementations for naive algorithms that output all matching subwords of a
 //< regex.
 //<
-//< Note that these algorithms are not as strong as other algorithms of this
+//< Note that these algorithms are not as powerful as other algorithms of this
 //< project as they can't handle defined groups.
 
 use lib_regex;
