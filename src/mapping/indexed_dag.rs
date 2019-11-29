@@ -221,7 +221,7 @@ impl<'i, 't> IndexedDagIterator<'i, 't> {
 
         IndexedDagIterator {
             indexed_dag,
-            stack: vec![(indexed_dag.jump.num_levels()-1, start, Vec::new())],
+            stack: if indexed_dag.jump.num_levels()==0 {Vec::new()} else {vec![(indexed_dag.jump.num_levels()-1, start, Vec::new())]},
 
             // `curr_next_level` is initialized empty, thus theses values will
             // be replaced before the first iteration.

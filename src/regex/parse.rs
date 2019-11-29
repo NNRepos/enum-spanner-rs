@@ -10,7 +10,7 @@ use super::super::automaton::atom::Atom;
 use super::super::automaton::Label;
 use super::super::mapping::{Marker, Variable};
 
-/// A simple Hir, with branchements of arity at most 2 and at least redondancy
+/// A simple Hir, with branchements of arity at most 2 and at little redundancy
 /// as possible.
 #[derive(Clone, Debug)]
 pub enum Hir {
@@ -177,7 +177,7 @@ impl Hir {
         for i in 0..min {
             if i == min - 1 && max == None {
                 // If the repetition has no upper bound, the last repetition
-                // of the input langage is replaced with a closure. It avoids
+                // of the input langage is replaced with a closure. It saves
                 // a few states to do it here.
                 result = Hir::concat(result, Hir::closure(hir.clone()));
             } else {

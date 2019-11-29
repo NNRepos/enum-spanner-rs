@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::Path;
 use std::io::prelude::*;
 use std::time::Instant;
-use super::mapping::indexed_dag::TrimmingStrategy;
+use super::mapping::indexed_dag::{IndexedDag,TrimmingStrategy};
 use super::mapping::Mapping;
 
 use serde::{Deserialize, Serialize};
@@ -20,9 +20,19 @@ pub struct BenchmarkCase {
     length:   Option<u64>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Delay {
+    delay_min: f64,
+    delay_max: f64,
+    delay_avg: f64,
+    delay_stddev: f64,
+    delay_hist: Vec<u32>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct BenchmarkResult {
     benchmark: BenchmarkCase,
+    num_states: usize,
     num_results: usize,
     width_avg: f64,
     width_max: usize,
@@ -32,11 +42,7 @@ pub struct BenchmarkResult {
     trim_dag: Option<f64>,
     index_dag: Option<f64>,
     enumerate: f64,
-    delay_min: f64,
-    delay_max: f64,
-    delay_avg: f64,
-    delay_stddev: f64,
-    delay_hist: Vec<u32>,
+    delays: Option<Delay>,
     memory_usage: usize,
     memory_dag: usize,
     memory_matrices: usize,
@@ -147,6 +153,7 @@ impl BenchmarkCase {
 
         Ok(BenchmarkResult {
             benchmark: self.clone(),
+            num_states: 0,
             num_results: count_matches,
             num_matrices: 0,
             num_used_matrices: 0,
@@ -158,11 +165,13 @@ impl BenchmarkCase {
             compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
             preprocess: 0.0,
             enumerate: enumerate.as_nanos() as f64/1000000000.0,
-            delay_min: min as f64 / 1000000000.0,
-            delay_max: max as f64 / 1000000000.0,
-            delay_avg: mean as f64 / 1000000000.0,
-            delay_stddev: stddev as f64 / 1000000000.0,
-            delay_hist: hist,
+            delays: Some(Delay {
+                delay_min: min as f64 / 1000000000.0,
+                delay_max: max as f64 / 1000000000.0,
+                delay_avg: mean as f64 / 1000000000.0,
+                delay_stddev: stddev as f64 / 1000000000.0,
+                delay_hist: hist,
+            }),
             memory_usage: 0,
             memory_dag_max: 0,
             memory_dag: 0,
@@ -176,41 +185,7 @@ impl BenchmarkCase {
 
     }
 
-    pub fn run(&self) -> Result<BenchmarkResult,std::io::Error> {   
-        let mut input = String::new();
-        let trimming_strategy = match self.trimming {
-            None => TrimmingStrategy::FullTrimming,
-            Some(s) => s,
-        };
-
-        let jump_distance = match self.jump {
-            None => 1,
-            Some(d) => d,
-        };
-
-        // Read input file content.
-        File::open(&self.filename)?.take(match self.length {
-            Some(l) => l,
-            None => std::u64::MAX,
-        }).read_to_string(&mut input)?;
-
-        // Compile the regex.
-        let timer = Instant::now();
-        let automaton = regex::compile(&self.regex);
-        let compile_regex = timer.elapsed();
-
-        // Prepare the enumeration.
-        let timer = Instant::now();
-        let compiled_matches = regex::compile_matches(automaton, &input, jump_distance, trimming_strategy);
-        let preprocess = timer.elapsed();
-
-        // Count matches.
-        let timer = Instant::now();
-        let count_matches = compiled_matches.iter().count();
-        let enumerate = timer.elapsed();
-
-        // detailed delay measurement
-        let k=10;
+    fn measure_delays(&self, count_matches: usize, compiled_matches: &IndexedDag, k: usize) -> Delay {
         let mut delays = Vec::with_capacity(k);
         // Do k iterations to get rid of outliers
         for _ in 0..k {
@@ -255,13 +230,63 @@ impl BenchmarkCase {
             hist[i as usize/1000]+=1;
         }
 
+        Delay {
+            delay_min: min as f64 / 1000000000.0,
+            delay_max: max as f64 / 1000000000.0,
+            delay_avg: mean as f64 / 1000000000.0,
+            delay_stddev: stddev as f64 / 1000000000.0,
+            delay_hist: hist,
+        }
+    }
+
+    pub fn run(&self, k: usize) -> Result<BenchmarkResult,std::io::Error> {
+        let mut input = String::new();
+        let trimming_strategy = match self.trimming {
+            None => TrimmingStrategy::FullTrimming,
+            Some(s) => s,
+        };
+
+        let jump_distance = match self.jump {
+            None => 1,
+            Some(d) => d,
+        };
+
+        // Read input file content.
+        File::open(&self.filename)?.take(100000000).read_to_string(&mut input)?;
+
+        // Compile the regex.
+        let timer = Instant::now();
+        let automaton = regex::compile(&self.regex);
+        let compile_regex = timer.elapsed();
+
+        let num_states = automaton.get_nb_states();
+
+        // Prepare the enumeration.
+        let timer = Instant::now();
+        let compiled_matches = regex::compile_matches(automaton, &input, jump_distance, trimming_strategy);
+        let preprocess = timer.elapsed();
+
+        // Count matches.
+        let timer = Instant::now();
+        let count_matches = compiled_matches.iter().count();
+        let enumerate = timer.elapsed();
+
         let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = compiled_matches.get_statistics();
 
         let (create_dag, trim_dag, index_dag) = compiled_matches.get_times();
 
         let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = compiled_matches.get_memory_usage();
 
+        let delays;
+        if k==0 {
+            delays = None;
+        } else {
+            delays = Some(self.measure_delays(count_matches, &compiled_matches, k));
+        }
+
+
         Ok(BenchmarkResult {
+            num_states,
             benchmark: self.clone(),
             num_results: count_matches,
             num_matrices,
@@ -274,11 +299,6 @@ impl BenchmarkCase {
             compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
             preprocess: preprocess.as_nanos() as f64/1000000000.0,
             enumerate: enumerate.as_nanos() as f64/1000000000.0,
-            delay_min: min as f64 / 1000000000.0,
-            delay_max: max as f64 / 1000000000.0,
-            delay_avg: mean as f64 / 1000000000.0,
-            delay_stddev: stddev as f64 / 1000000000.0,
-            delay_hist: hist,
             memory_usage: dag_mem + matrices_mem + jump_level_mem,
             memory_dag_max: dag_mem_max,
             memory_dag: dag_mem,
@@ -288,6 +308,7 @@ impl BenchmarkCase {
             create_dag: create_dag.map(|t| t.as_nanos() as f64/1000000000.0),
             trim_dag: trim_dag.map(|t| t.as_nanos() as f64/1000000000.0),
             index_dag: index_dag.map(|t| t.as_nanos() as f64/1000000000.0),
+            delays,
         })
     }   
 }
