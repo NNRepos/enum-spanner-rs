@@ -213,7 +213,13 @@ fn main() {
 
     if benchmark {
         let benchmark_case = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy);
-        let result = benchmark_case.run(repetitions).unwrap();
+        let result = if use_naive_quadratic {
+            benchmark_case.run_quadratic().unwrap()
+            } else {
+            benchmark_case.run(repetitions).unwrap()
+        };
+            
+        print!("{}", serde_json::to_string_pretty(&result).unwrap());
 
         return;
     }
