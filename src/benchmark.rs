@@ -56,7 +56,7 @@ pub struct BenchmarkResult {
 }
 
 impl BenchmarkCase {
-    pub fn read_from_file(filename: &Path) -> Result<Vec<BenchmarkCase>,Box<std::error::Error>> {
+    pub fn read_from_file(filename: &Path) -> Result<Vec<BenchmarkCase>,Box<dyn std::error::Error>> {
         let mut input = String::new();
 
         File::open(&filename)?.read_to_string(&mut input)?;

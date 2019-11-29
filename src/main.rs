@@ -314,7 +314,7 @@ fn main() {
 
     let indexed_dag;
 
-    let iter_matches:Box<Iterator<Item=Mapping>> = if use_naive {
+    let iter_matches:Box<dyn Iterator<Item=Mapping>> = if use_naive {
         Box::new(mapping::naive::NaiveEnum::new(&regex, &text))
     } else if use_naive_cubic {
         Box::new(regex::naive::NaiveEnumCubic::new(regex_str, &text).unwrap())
