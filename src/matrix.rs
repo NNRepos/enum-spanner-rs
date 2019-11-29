@@ -51,10 +51,10 @@ impl<'a> Matrix
 	#[inline(always)]
 	fn padded_width(width: usize) -> usize {
 		match width {
-			0...8 => 8,
-			9...16 => 16,
-			17...32 => 32,
-			33...64 => 64,
+			0..=8 => 8,
+			9..=16 => 16,
+			17..=32 => 32,
+			33..=64 => 64,
 			_ => (width / 64 + if (width & 63)==0 {0} else {1})*64,
 		}
 	}

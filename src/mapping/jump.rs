@@ -257,7 +257,7 @@ impl Jump {
 		new_jl
 	}
 
-	fn compute_reach(&self, level: usize, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>, t_to_i: &Vec<usize>) -> (Matrix,Matrix) {
+	fn compute_reach(&self, curr_level: &BitSet, prev_level: &BitSet, jump_adj: &Vec<Vec<usize>>, t_to_i: &Vec<usize>) -> (Matrix,Matrix) {
         // Compute the adjacency between current level and the previous one.
 		let prev_level_len = prev_level.len();
 		let mut prev_level_iter = prev_level.iter();
@@ -326,7 +326,7 @@ impl Jump {
 
 		let new_jl = self.compute_jl(&curr_level, &prev_level, jump_adj, nonjump_adj, jl, &t_to_i);
 
-		let (new_reach, mut new_reach_t) = self.compute_reach(level, &curr_level, &prev_level, jump_adj, &t_to_i);
+		let (new_reach, mut new_reach_t) = self.compute_reach(&curr_level, &prev_level, jump_adj, &t_to_i);
 		
 		// no rlevel will point to this level
 		if curr_level.is_disjoint(&self.jump_vertices) && (level < self.last_level) {
@@ -339,7 +339,7 @@ impl Jump {
 
 		// we remove all levels that cannot be jumped to 
 		self.dag_bitmap.move_level(level, prev_level_no + 1);
-        if (level == self.last_level) {
+        if level == self.last_level {
 			self.dag_mem_before_trunk = self.dag_bitmap.get_memory_usage();
             self.last_level = prev_level_no + 1;
             self.dag_bitmap.truncate(prev_level_no + 2);
@@ -403,10 +403,6 @@ impl Jump {
 		(num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, self.get_max_width(), self.get_avg_width())
 	}
 
-	fn get_num_matrices(&self) -> usize {
-		self.levels.iter().fold(0, |acc, x| acc + x.reach.len())
-	}
-
 	fn get_matrix_stats(&self) -> (usize, usize, f64, usize, f64) {
 		let (count, used_count, total_size, max_size, count_ones) = MatrixIterator::init(self).fold((0,0,0,0,0), |(count, used_count, total_size, max_size, count_ones), x| {
 			let size = x.get_width() * x.get_height();
@@ -453,7 +449,7 @@ struct MatrixIterator<'a> {
 impl<'a> MatrixIterator<'a> {
 	fn init(jump: &'a Jump) -> MatrixIterator {
 		let mut level_iterator = jump.levels.iter();
-		let mut matrix_iterator = level_iterator.next().unwrap().reach.iter();
+		let matrix_iterator = level_iterator.next().unwrap().reach.iter();
 
 		MatrixIterator {
 			level_iterator,
