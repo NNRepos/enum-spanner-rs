@@ -105,52 +105,6 @@ impl BenchmarkCase {
         let count_matches = iterator.count();
         let enumerate = timer.elapsed();
 
-        // detailed delay measurement
-        let k=10;
-        let mut delays = Vec::with_capacity(k);
-        // Do k iterations to get rid of outliers
-        for _ in 0..k {
-            let start_time = Instant::now();
-            let mut times = Vec::with_capacity(count_matches);
-            let _ = regex::naive::NaiveEnumQuadratic::new(&self.regex, &input).map(|x| {
-                times.push(start_time.elapsed().subsec_nanos());
-
-                x
-            }).count();
-
-            let mut last = 0;
-            let delay: Vec<u32> = times.iter().map(|&d| {let i = ((d + 1000000000) - last) % 1000000000; last = d; i}).skip(1).collect();
-
-            delays.push(delay);
-        }
-
-        let mut iters = Vec::with_capacity(k);
-        for i in &delays {
-            iters.push(i.iter());
-        }
-
-        let mut temp: Vec<u32> = Vec::with_capacity(k);
-
-        let mean_delays: Vec<u32> = if count_matches == 0 {Vec::new()} else {
-            (0..count_matches-1).map(|_| {
-                temp.clear();
-                for iter in &mut iters {
-                    temp.push(*iter.next().unwrap());
-                }
-
-                *temp.iter().min().unwrap()
-            }).collect()
-        };
-
-        let mean = stats::mean(mean_delays.iter().map(|&x| x));
-        let stddev = stats::stddev(mean_delays.iter().map(|&x| x));
-        let max: usize = *mean_delays.iter().max().unwrap_or(&0) as usize;
-        let min = *mean_delays.iter().min().unwrap_or(&0);
-        let mut hist = vec![0;max/100000 + 1];
-        for &i in &mean_delays {
-            hist[i as usize/100000]+=1;
-        }
-
         Ok(BenchmarkResult {
             benchmark: self.clone(),
             num_states: 0,
@@ -165,13 +119,7 @@ impl BenchmarkCase {
             compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
             preprocess: 0.0,
             enumerate: enumerate.as_nanos() as f64/1000000000.0,
-            delays: Some(Delay {
-                delay_min: min as f64 / 1000000000.0,
-                delay_max: max as f64 / 1000000000.0,
-                delay_avg: mean as f64 / 1000000000.0,
-                delay_stddev: stddev as f64 / 1000000000.0,
-                delay_hist: hist,
-            }),
+            delays: None,
             memory_usage: 0,
             memory_dag_max: 0,
             memory_dag: 0,
