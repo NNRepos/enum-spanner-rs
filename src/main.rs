@@ -12,7 +12,7 @@ extern crate bit_vec;
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{stdin, stdout};
+use std::io::stdin;
 use std::time;
 use std::path::Path;
 

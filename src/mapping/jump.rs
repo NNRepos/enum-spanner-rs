@@ -1,5 +1,4 @@
 use std::cmp::max;
-use std::fmt;
 use bit_set::BitSet;
 
 use super::super::matrix::Matrix;

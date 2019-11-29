@@ -3,7 +3,6 @@ use std::path::Path;
 use std::io::prelude::*;
 use std::time::Instant;
 use super::mapping::indexed_dag::{IndexedDag,TrimmingStrategy};
-use super::mapping::Mapping;
 
 use serde::{Deserialize, Serialize};
 
