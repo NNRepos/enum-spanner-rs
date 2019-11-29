@@ -199,7 +199,10 @@ impl BenchmarkCase {
         };
 
         // Read input file content.
-        File::open(&self.filename)?.take(100000000).read_to_string(&mut input)?;
+        File::open(&self.filename)?.take(match self.length {
+            Some(l) => l,
+            None => std::u64::MAX,
+        }).read_to_string(&mut input)?;
 
         // Compile the regex.
         let timer = Instant::now();
