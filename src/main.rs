@@ -124,10 +124,26 @@ fn main() {
             .possible_value("no")
             .help("Should the DAG be trimmed? Useful for benchmarking the effect of trimming."),
         )
+        .arg(
+            Arg::with_name("repetitions")
+            .long("repetitions")
+            .takes_value(true)
+            .default_value("0")
+            .help("Enables a detailed delay analysis if >0. The parameter gives the number of repetitions used to filter outliers."),
+        )
         .get_matches();
 
     // Extract parameters
     let benchmark = matches.is_present("benchmark");
+    let repetitions = match matches.value_of("repetitions") {
+        None => 0,
+        Some(s) => {
+	        match s.parse::<usize>() {
+		        Ok(n) => n,
+                Err(_) => panic!("Not a number: {}", s),
+	        }
+        }
+    };
     let count = matches.is_present("count");
     let show_offset = matches.is_present("bytes_offset");
     let compare_format = matches.is_present("compare");
@@ -180,7 +196,7 @@ fn main() {
         let mut first = true;
         for benchmark in benchmarks {
             println!("{}", if first {""} else {","});
-            let result = benchmark.run().unwrap();
+            let result = benchmark.run(repetitions).unwrap();
             print!("{}", serde_json::to_string_pretty(&result).unwrap());
             first = false;
         }
@@ -191,8 +207,9 @@ fn main() {
     let regex_str = matches.value_of("regex").unwrap();
 
     if benchmark {
-        let result = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy).run().unwrap();
-        println!("[\n{}\n]", serde_json::to_string_pretty(&result).unwrap());
+        let benchmark_case = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy);
+        let result = benchmark_case.run(repetitions).unwrap();
+
         return;
     }
 
