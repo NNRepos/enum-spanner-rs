@@ -1,5 +1,3 @@
-pub mod naive;
-
 mod glushkov;
 mod parse;
 

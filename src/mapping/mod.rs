@@ -1,5 +1,4 @@
 pub mod indexed_dag;
-pub mod naive;
 
 mod jump;
 mod levelset;

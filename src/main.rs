@@ -4,6 +4,7 @@ mod mapping;
 mod matrix;
 mod progress;
 mod regex;
+mod naive;
 
 extern crate clap;
 extern crate regex as lib_regex;
@@ -17,7 +18,7 @@ use std::time;
 use std::path::Path;
 
 use clap::{App, Arg};
-use mapping::{SpannerEnumerator,Mapping};
+use mapping::{SpannerEnumerator};
 use mapping::indexed_dag::{IndexedDag,TrimmingStrategy};
 use benchmark::BenchmarkCase;
 
@@ -262,11 +263,14 @@ fn main() {
     let timer = time::Instant::now();
 
     fn handle_matches<'t>(
-        matches: impl Iterator<Item = mapping::Mapping<'t>>,
+        enumerator: &mut impl SpannerEnumerator<'t>,
         text: &str,
         timer: &time::Instant,
         display_format: DisplayFormat,
     ) {
+        enumerator.preprocess();
+        let matches = enumerator.iter();
+
         match display_format {
             DisplayFormat::Count => {
                 let count = matches.count();
@@ -312,21 +316,16 @@ fn main() {
         }
     }
 
-    let mut indexed_dag;
-
-    let iter_matches:Box<dyn Iterator<Item=Mapping>> = if use_naive {
-        Box::new(mapping::naive::NaiveEnum::new(&automaton, &text))
+    
+    if use_naive {
+        handle_matches(&mut naive::naive::NaiveEnum::new(&automaton, &text), &text, &timer, display_format);
     } else if use_naive_cubic {
-        Box::new(regex::naive::NaiveEnumCubic::new(regex_str, &text).unwrap())
+        handle_matches(&mut naive::naive_cubic::NaiveEnumCubic::new(regex_str, &text).unwrap(), &text, &timer, display_format);
     } else if use_naive_quadratic {
-        Box::new(regex::naive::NaiveEnumQuadratic::new(regex_str, &text))
+        handle_matches(&mut naive::naive_quadratic::NaiveEnumQuadratic::new(regex_str, &text), &text, &timer, display_format);
     } else {
-        indexed_dag = IndexedDag::new(automaton, &text, jump_distance, trimming_strategy, true);
-        indexed_dag.preprocess();
-        Box::new(indexed_dag.iter())
-    };
-
-    handle_matches(iter_matches, &text, &timer, display_format);
+        handle_matches(&mut IndexedDag::new(automaton, &text, jump_distance, trimming_strategy, true), &text, &timer, display_format);
+    }
 
     //  ____       _                   ___        __
     // |  _ \  ___| |__  _   _  __ _  |_ _|_ __  / _| ___  ___

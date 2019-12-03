@@ -4,70 +4,13 @@
 //< Note that these algorithms are not as powerful as other algorithms of this
 //< project as they can't handle defined groups.
 
-use lib_regex;
-
 use std::ops;
 
 use super::super::automaton::Automaton;
 use super::super::regex;
-use super::super::mapping::Mapping;
+use super::super::mapping::{Mapping,SpannerEnumerator};
 
-//  _   _       _              ____      _     _
-// | \ | | __ _(_)_   _____   / ___|   _| |__ (_) ___
-// |  \| |/ _` | \ \ / / _ \ | |  | | | | '_ \| |/ __|
-// | |\  | (_| | |\ V /  __/ | |__| |_| | |_) | | (__
-// |_| \_|\__,_|_| \_/ \___|  \____\__,_|_.__/|_|\___|
-//
 
-// TODO: this algorithm probably doesn't return matches aligned with the last
-// character.
-
-pub struct NaiveEnumCubic<'t> {
-    regex: lib_regex::Regex,
-    text:  &'t str,
-
-    // Current state of the iteration
-    char_iterator_start: std::str::CharIndices<'t>,
-    char_iterator_end:   std::str::CharIndices<'t>,
-}
-
-impl<'t> NaiveEnumCubic<'t> {
-    pub fn new(regex: &str, text: &'t str) -> Result<NaiveEnumCubic<'t>, lib_regex::Error> {
-        Ok(NaiveEnumCubic {
-            regex: lib_regex::Regex::new(&format!("^{}$", regex))?,
-            text,
-            char_iterator_start: text.char_indices(),
-            char_iterator_end: text.char_indices(),
-        })
-    }
-}
-
-impl<'t> Iterator for NaiveEnumCubic<'t> {
-    type Item = Mapping<'t>;
-
-    fn next(&mut self) -> Option<Mapping<'t>> {
-        while let Some((curr_start, _)) = self.char_iterator_start.next() {
-            while let Some((curr_end, _)) = self.char_iterator_end.next() {
-                let is_match = self.regex.is_match(&self.text[curr_start..curr_end]);
-
-                if is_match {
-                    return Some(Mapping::from_single_match(
-                        self.text,
-                        ops::Range {
-                            start: curr_start,
-                            end:   curr_end,
-                        },
-                    ));
-                }
-            }
-
-            // Move the start cursor to the next char.
-            self.char_iterator_end = self.char_iterator_start.clone();
-        }
-
-        None
-    }
-}
 
 //  _   _       _              ___                  _           _   _
 // | \ | | __ _(_)_   _____   / _ \ _   _  __ _  __| |_ __ __ _| |_(_) ___
@@ -85,7 +28,11 @@ impl<'t> Iterator for NaiveEnumCubic<'t> {
 pub struct NaiveEnumQuadratic<'t> {
     automaton: Automaton,
     text:      &'t str,
+}
 
+pub struct NaiveEnumQuadraticIterator<'t> {
+    automaton: Automaton,
+    text:      &'t str,
     // Current state of the iteration
     curr_states:         Vec<bool>,
     char_iterator_end:   std::str::CharIndices<'t>,
@@ -96,21 +43,32 @@ impl<'t> NaiveEnumQuadratic<'t> {
     pub fn new(regex_str: &str, text: &'t str) -> NaiveEnumQuadratic<'t> {
         let automaton = regex::compile_raw(regex_str);
 
-        // Init automata states
-        let mut initial_states = vec![false; automaton.nb_states];
-        initial_states[automaton.get_initial()] = true;
-
         NaiveEnumQuadratic {
             automaton,
             text,
-            curr_states: initial_states,
-            char_iterator_end: text.char_indices(),
-            char_iterator_start: text.char_indices(),
         }
     }
 }
 
-impl<'t> Iterator for NaiveEnumQuadratic<'t> {
+impl<'t> SpannerEnumerator<'t> for NaiveEnumQuadratic<'t> {
+    fn preprocess(&mut self) {}
+
+    fn iter<'i>(&'i self) -> Box<dyn Iterator<Item = Mapping<'t>> +'i> {
+        // Init automata states
+        let mut initial_states = vec![false; self.automaton.nb_states];
+        initial_states[self.automaton.get_initial()] = true;
+
+        Box::new(NaiveEnumQuadraticIterator {
+            automaton: self.automaton.clone(),
+            text: self.text,
+            curr_states: initial_states,
+            char_iterator_end: self.text.char_indices(),
+            char_iterator_start: self.text.char_indices(),
+        })
+    }
+}
+
+impl<'t> Iterator for NaiveEnumQuadraticIterator<'t> {
     type Item = Mapping<'t>;
 
     fn next(&mut self) -> Option<Mapping<'t>> {

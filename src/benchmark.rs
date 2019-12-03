@@ -7,6 +7,7 @@ use super::mapping::{SpannerEnumerator,indexed_dag::{IndexedDag,TrimmingStrategy
 use serde::{Deserialize, Serialize};
 
 use super::regex;
+use super::naive;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BenchmarkCase {
@@ -96,7 +97,8 @@ impl BenchmarkCase {
 
         // Compile the regex.
         let timer = Instant::now();
-        let iterator = regex::naive::NaiveEnumQuadratic::new(&self.regex, &input);
+        let naive = naive::naive_quadratic::NaiveEnumQuadratic::new(&self.regex, &input);
+        let iterator = naive.iter();
         let compile_regex = timer.elapsed();
 
         // Count matches.
