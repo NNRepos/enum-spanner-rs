@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::Path;
 use std::io::prelude::*;
 use std::time::Instant;
-use super::mapping::indexed_dag::{IndexedDag,TrimmingStrategy};
+use super::mapping::{SpannerEnumerator,indexed_dag::{IndexedDag,TrimmingStrategy}};
 
 use serde::{Deserialize, Serialize};
 
@@ -210,10 +210,11 @@ impl BenchmarkCase {
         let compile_regex = timer.elapsed();
 
         let num_states = automaton.get_nb_states();
+        let mut compiled_matches = IndexedDag::new(automaton, &input, jump_distance, trimming_strategy, false);
 
         // Prepare the enumeration.
         let timer = Instant::now();
-        let compiled_matches = IndexedDag::compile(automaton, &input, jump_distance, trimming_strategy, false);
+        compiled_matches.preprocess();
         let preprocess = timer.elapsed();
 
         // Count matches.

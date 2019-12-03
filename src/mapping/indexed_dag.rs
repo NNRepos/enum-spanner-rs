@@ -1,7 +1,7 @@
 use std::iter;
 
 use super::super::automaton::Automaton;
-use super::super::mapping::{Mapping, Marker};
+use super::super::mapping::{Mapping, Marker, SpannerEnumerator};
 use super::super::progress::Progress;
 use super::jump::Jump;
 use bit_set::BitSet;
@@ -23,7 +23,10 @@ use std::time::{Instant, Duration};
 pub struct IndexedDag<'t> {
     automaton:    Automaton,
     text:         &'t str,
-    jump:         Jump,
+    jump_distance: usize,
+    trimming_strategy: TrimmingStrategy,
+    jump:         Option<Jump>,
+    toggle_progress: bool,
     create_dag_time: Option<Duration>,
     trim_time: Option<Duration>,
     index_time: Option<Duration>,
@@ -37,107 +40,28 @@ pub enum TrimmingStrategy {
 }
 
 impl<'t> IndexedDag<'t> {
-    /// Compute the index of matches of an automaton over input text.
-    pub fn compile(
-        mut automaton: Automaton,
+    pub fn new(
+        automaton: Automaton,
         text: &str,
 		jump_distance: usize,
         trimming_strategy: TrimmingStrategy,
         toggle_progress: bool,
     ) -> IndexedDag {
-        // Compute the jump function
-        let mut jump = Jump::new(
-            iter::once(automaton.get_initial()),
-            automaton.get_closure_for_assignations(),
-			automaton.get_jump_states(),
-			text.len() + 1,
-			automaton.get_nb_states(),
-			jump_distance,
-        );
-
-        let closure_for_assignations = automaton.get_closure_for_assignations().clone();
-
-        let start_time = Instant::now();
-
-        let chars = text.chars();
-        let mut progress = Progress::from_iter(chars)
-            .auto_refresh(toggle_progress);
-
-        while let Some(curr_char) = progress.next() {
-            let adj_for_char = automaton.get_adj_for_char_with_closure(curr_char);
-            jump.init_next_level(adj_for_char);
-
-            if jump.is_disconnected() {
-                break;
-            }
-        }
-
-        let create_dag_time = Some(start_time.elapsed());
-
-//		println!("Levelset: {:#?}", jump);
-
-        let start_time = Instant::now();
-        let mut trim_time = None;
-        let mut index_time = None;
-
-        if trimming_strategy == TrimmingStrategy::FullTrimming {
-            jump.trim_last_level(&automaton.finals, &closure_for_assignations);
-        }
-	
-        if !jump.is_disconnected() {
-
-//		println!("Levelset: {:#?}", jump);
-			
-            if trimming_strategy != TrimmingStrategy::NoTrimming {
-                let chars = text.chars();
-                let mut level = jump.get_last_level();
-                let mut progress = Progress::from_iter(chars.rev())
-                    .auto_refresh(toggle_progress);
-            
-                while let Some(curr_char) = progress.next() {
-                    let rev_adj_for_char = automaton.get_rev_adj_for_char_with_closure(curr_char);
-                    jump.trim_level(level, rev_adj_for_char);
-                    level -= 1;
-                }
-            }
-
-            trim_time = Some(start_time.elapsed());
-            let start_time = Instant::now();
-
-//		println!("Levelset: {:#?}", jump);
-
-            let chars = text.chars();
-            let mut progress = Progress::from_iter(chars)
-                .auto_refresh(toggle_progress);
-		    let mut level = 1;
-
-            while let Some(curr_char) = progress.next() {
-                let adj_for_char = automaton.get_adj_for_char(curr_char);
-                jump.init_reach(level, curr_char, adj_for_char, &closure_for_assignations);
-			    level+=1;
-	        }
-
-            index_time = Some(start_time.elapsed());
-		}
-
-//		println!("Levelset: {:#?}", jump);
-
         IndexedDag {
             automaton,
             text,
-            jump,
-            create_dag_time,
-            trim_time,
-            index_time,
+            jump_distance,
+            trimming_strategy,
+            toggle_progress,
+            jump: None,
+            create_dag_time: None,
+            trim_time: None,
+            index_time: None,
         }
     }
 
-    pub fn iter<'i>(&'i self) -> impl Iterator<Item = Mapping<'t>> + 'i {
-        IndexedDagIterator::init(self)
-    }
-
     pub fn num_levels(&self) -> usize {
-        self.jump.num_levels()
+        self.jump.as_ref().unwrap().num_levels()
     }
 
     pub fn get_times(&self) -> (Option<Duration>, Option<Duration>, Option<Duration>) {
@@ -176,13 +100,92 @@ impl<'t> IndexedDag<'t> {
     }
 
     pub fn get_memory_usage(&self) -> (usize,usize,usize,usize) {
-        self.jump.get_memory_usage()
+        self.jump.as_ref().unwrap().get_memory_usage()
     }
 
     pub fn get_statistics(&self) -> (usize, usize, f64, usize, f64, usize, f64) {
-		self.jump.get_statistics()
+		self.jump.as_ref().unwrap().get_statistics()
 	}
 }
+
+impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
+    fn iter<'i>(&'i self) -> Box<dyn Iterator<Item = Mapping<'t>> + 'i> {
+        Box::new(IndexedDagIterator::init(self))
+    }
+
+    /// Compute the index of matches of an automaton over input text.
+    fn preprocess(&mut self) {
+        // Compute the jump function
+        let mut jump = Jump::new(
+            iter::once(self.automaton.get_initial()),
+            self.automaton.get_closure_for_assignations(),
+			self.automaton.get_jump_states(),
+			self.text.len() + 1,
+			self.automaton.get_nb_states(),
+			self.jump_distance,
+        );
+
+        let closure_for_assignations = self.automaton.get_closure_for_assignations().clone();
+
+        let start_time = Instant::now();
+
+        let chars = self.text.chars();
+        let mut progress = Progress::from_iter(chars)
+            .auto_refresh(self.toggle_progress);
+
+        while let Some(curr_char) = progress.next() {
+            let adj_for_char = self.automaton.get_adj_for_char_with_closure(curr_char);
+            jump.init_next_level(adj_for_char);
+
+            if jump.is_disconnected() {
+                return;
+            }
+        }
+
+        self.create_dag_time = Some(start_time.elapsed());
+
+        let start_time = Instant::now();
+
+        if self.trimming_strategy == TrimmingStrategy::FullTrimming {
+            jump.trim_last_level(&self.automaton.finals, &closure_for_assignations);
+        }
+	
+        if jump.is_disconnected() {
+            return;
+        }
+
+        if self.trimming_strategy != TrimmingStrategy::NoTrimming {
+            let chars = self.text.chars();
+            let mut level = jump.get_last_level();
+            let mut progress = Progress::from_iter(chars.rev())
+                .auto_refresh(self.toggle_progress);
+        
+            while let Some(curr_char) = progress.next() {
+                let rev_adj_for_char = self.automaton.get_rev_adj_for_char_with_closure(curr_char);
+                jump.trim_level(level, rev_adj_for_char);
+                level -= 1;
+            }
+        }
+
+        self.trim_time = Some(start_time.elapsed());
+        let start_time = Instant::now();
+        let chars = self.text.chars();
+        let mut progress = Progress::from_iter(chars)
+            .auto_refresh(self.toggle_progress);
+        let mut level = 1;
+
+        while let Some(curr_char) = progress.next() {
+            let adj_for_char = self.automaton.get_adj_for_char(curr_char);
+            jump.init_reach(level, curr_char, adj_for_char, &closure_for_assignations);
+            level+=1;
+        }
+
+        self.index_time = Some(start_time.elapsed());
+
+        self.jump = Some(jump);
+    }
+}
+
 
 //  ___           _                   _
 // |_ _|_ __   __| | _____  _____  __| |
@@ -209,13 +212,16 @@ struct IndexedDagIterator<'i, 't> {
 impl<'i, 't> IndexedDagIterator<'i, 't> {
     fn init(indexed_dag: &'i IndexedDag<'t>) -> IndexedDagIterator<'i, 't> {
         let mut start = indexed_dag
-            .jump
+            .jump.as_ref().unwrap()
             .finals().clone();
 		start.intersect_with(&indexed_dag.automaton.finals);
 
         IndexedDagIterator {
             indexed_dag,
-            stack: if indexed_dag.jump.num_levels()==0 {Vec::new()} else {vec![(indexed_dag.jump.num_levels()-1, start, Vec::new())]},
+            stack: match &indexed_dag.jump {
+                None => Vec::new(),
+                Some(j) => vec![(j.num_levels()-1, start, Vec::new())],
+            },
 
             // `curr_next_level` is initialized empty, thus theses values will
             // be replaced before the first iteration.
@@ -249,7 +255,7 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
 
                 let mut new_mapping = self.curr_mapping.clone();
                 for marker in s_p {
-                    new_mapping.push((marker, self.indexed_dag.jump.get_pos(self.curr_level)));
+                    new_mapping.push((marker, self.indexed_dag.jump.as_ref().unwrap().get_pos(self.curr_level)));
                 }
 
                 if self.curr_level == 0 {
@@ -268,7 +274,7 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                     }
                 } else if let Some(jump_level) = self
                     .indexed_dag
-                    .jump
+                    .jump.as_ref().unwrap()
                     .jump(self.curr_level, &mut new_gamma)
                 {
 	                self.stack.push((jump_level, new_gamma, new_mapping));

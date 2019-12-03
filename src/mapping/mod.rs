@@ -12,6 +12,13 @@ use std::rc::Rc;
 
 pub use indexed_dag::IndexedDag;
 
+
+pub trait SpannerEnumerator<'t> {
+    fn preprocess(&mut self);
+    fn iter<'i>(&'i self) -> Box<dyn Iterator<Item=Mapping<'t>> + 'i>;
+}
+
+
 //  __  __                   _
 // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
 // | |\/| |/ _` | '_ \| '_ \| | '_ \ / _` |

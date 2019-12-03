@@ -17,7 +17,7 @@ use std::time;
 use std::path::Path;
 
 use clap::{App, Arg};
-use mapping::Mapping;
+use mapping::{SpannerEnumerator,Mapping};
 use mapping::indexed_dag::{IndexedDag,TrimmingStrategy};
 use benchmark::BenchmarkCase;
 
@@ -312,7 +312,7 @@ fn main() {
         }
     }
 
-    let indexed_dag;
+    let mut indexed_dag;
 
     let iter_matches:Box<dyn Iterator<Item=Mapping>> = if use_naive {
         Box::new(mapping::naive::NaiveEnum::new(&automaton, &text))
@@ -321,7 +321,8 @@ fn main() {
     } else if use_naive_quadratic {
         Box::new(regex::naive::NaiveEnumQuadratic::new(regex_str, &text))
     } else {
-        indexed_dag = IndexedDag::compile(automaton, &text, jump_distance, trimming_strategy, true);
+        indexed_dag = IndexedDag::new(automaton, &text, jump_distance, trimming_strategy, true);
+        indexed_dag.preprocess();
         Box::new(indexed_dag.iter())
     };
 
