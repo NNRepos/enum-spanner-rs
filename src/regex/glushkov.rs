@@ -31,8 +31,8 @@ pub struct GlushkovTerm {
 
 #[derive(Clone, Debug)]
 pub struct LocalLang {
-    pub nb_terms: usize,
-    pub factors: GlushkovFactors,
+    nb_terms: usize,
+    factors: GlushkovFactors,
 }
 
 /// A local language is a regular language that can be identified with only its

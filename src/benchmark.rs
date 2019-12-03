@@ -213,7 +213,7 @@ impl BenchmarkCase {
 
         // Prepare the enumeration.
         let timer = Instant::now();
-        let compiled_matches = regex::compile_matches(automaton, &input, jump_distance, trimming_strategy);
+        let compiled_matches = IndexedDag::compile(automaton, &input, jump_distance, trimming_strategy, false);
         let preprocess = timer.elapsed();
 
         // Count matches.

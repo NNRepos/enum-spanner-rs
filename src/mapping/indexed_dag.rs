@@ -29,12 +29,6 @@ pub struct IndexedDag<'t> {
     index_time: Option<Duration>,
 }
 
-#[derive(Eq, PartialEq)]
-pub enum ToggleProgress {
-    Enabled,
-    Disabled,
-}
-
 #[derive(Eq, PartialEq, Serialize, Deserialize, Clone, Copy)]
 pub enum TrimmingStrategy {
     NoTrimming,
@@ -47,9 +41,9 @@ impl<'t> IndexedDag<'t> {
     pub fn compile(
         mut automaton: Automaton,
         text: &str,
-        toggle_progress: ToggleProgress,
 		jump_distance: usize,
         trimming_strategy: TrimmingStrategy,
+        toggle_progress: bool,
     ) -> IndexedDag {
         // Compute the jump function
         let mut jump = Jump::new(
@@ -67,7 +61,7 @@ impl<'t> IndexedDag<'t> {
 
         let chars = text.chars();
         let mut progress = Progress::from_iter(chars)
-            .auto_refresh(toggle_progress == ToggleProgress::Enabled);
+            .auto_refresh(toggle_progress);
 
         while let Some(curr_char) = progress.next() {
             let adj_for_char = automaton.get_adj_for_char_with_closure(curr_char);
@@ -98,7 +92,7 @@ impl<'t> IndexedDag<'t> {
                 let chars = text.chars();
                 let mut level = jump.get_last_level();
                 let mut progress = Progress::from_iter(chars.rev())
-                    .auto_refresh(toggle_progress == ToggleProgress::Enabled);
+                    .auto_refresh(toggle_progress);
             
                 while let Some(curr_char) = progress.next() {
                     let rev_adj_for_char = automaton.get_rev_adj_for_char_with_closure(curr_char);
@@ -114,7 +108,7 @@ impl<'t> IndexedDag<'t> {
 
             let chars = text.chars();
             let mut progress = Progress::from_iter(chars)
-                .auto_refresh(toggle_progress == ToggleProgress::Enabled);
+                .auto_refresh(toggle_progress);
 		    let mut level = 1;
 
             while let Some(curr_char) = progress.next() {

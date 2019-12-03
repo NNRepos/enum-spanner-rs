@@ -10,7 +10,7 @@ use std::ops;
 
 use super::super::automaton::Automaton;
 use super::super::regex;
-use super::mapping::Mapping;
+use super::super::mapping::Mapping;
 
 //  _   _       _              ____      _     _
 // | \ | | __ _(_)_   _____   / ___|   _| |__ (_) ___

@@ -18,7 +18,7 @@ use std::path::Path;
 
 use clap::{App, Arg};
 use mapping::Mapping;
-use mapping::indexed_dag::TrimmingStrategy;
+use mapping::indexed_dag::{IndexedDag,TrimmingStrategy};
 use benchmark::BenchmarkCase;
 
 #[derive(PartialEq, Eq)]
@@ -254,8 +254,8 @@ fn main() {
     // |_|  |_|\__,_|\__\___|_| |_|
     //
 
-    let regex = regex::compile(regex_str);
-    regex
+    let automaton = regex::compile(regex_str);
+    automaton
         .render("automaton.dot")
         .expect("Could not create the dotfile.");
 
@@ -315,13 +315,13 @@ fn main() {
     let indexed_dag;
 
     let iter_matches:Box<dyn Iterator<Item=Mapping>> = if use_naive {
-        Box::new(mapping::naive::NaiveEnum::new(&regex, &text))
+        Box::new(mapping::naive::NaiveEnum::new(&automaton, &text))
     } else if use_naive_cubic {
         Box::new(regex::naive::NaiveEnumCubic::new(regex_str, &text).unwrap())
     } else if use_naive_quadratic {
         Box::new(regex::naive::NaiveEnumQuadratic::new(regex_str, &text))
     } else {
-        indexed_dag=regex::compile_matches_progress(regex, &text, jump_distance, trimming_strategy);
+        indexed_dag = IndexedDag::compile(automaton, &text, jump_distance, trimming_strategy, true);
         Box::new(indexed_dag.iter())
     };
 

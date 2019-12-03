@@ -4,8 +4,6 @@ mod glushkov;
 mod parse;
 
 use super::automaton::Automaton;
-use super::mapping;
-use super::mapping::indexed_dag::TrimmingStrategy;
 
 pub fn compile(regex: &str) -> Automaton {
     let hir = parse::Hir::from_regex(&regex, false);
@@ -26,30 +24,6 @@ pub fn is_match(regex: &str, text: &str) -> bool {
 
     let ret = matches.iter().next().is_some();
     ret
-}
-pub fn compile_matches<'t>(automaton: Automaton, text: &'t str, jump_distance: usize, trimming_strategy: TrimmingStrategy) -> mapping::IndexedDag<'t> {
-    mapping::IndexedDag::compile(
-        automaton,
-        text,
-        mapping::indexed_dag::ToggleProgress::Disabled,
-		jump_distance,
-        trimming_strategy,
-    )
-}
-
-pub fn compile_matches_progress<'t>(
-    automaton: Automaton,
-    text: &'t str,
-	jump_distance: usize,
-    trimming_strategy: TrimmingStrategy,
-) -> mapping::IndexedDag<'t> {
-    mapping::IndexedDag::compile(
-        automaton,
-        text,
-        mapping::indexed_dag::ToggleProgress::Enabled,
-		jump_distance,
-        trimming_strategy,
-    )
 }
 
 
