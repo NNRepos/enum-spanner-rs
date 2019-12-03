@@ -32,6 +32,14 @@ enum DisplayFormat {
     Verbose { show_offset: bool },
 }
 
+#[derive(Clone,Copy)]
+pub enum Algorithm {
+    ICDT19,
+    Naive,
+    NaiveQuadratic,
+    NaiveCubic,
+}
+
 fn main() {
     //  ____
     // |  _ \ __ _ _ __ ___  ___ _ __
@@ -149,9 +157,15 @@ fn main() {
     let show_offset = matches.is_present("bytes_offset");
     let compare_format = matches.is_present("compare");
 
-    let use_naive = matches.is_present("use_naive");
-    let use_naive_cubic = matches.is_present("use_naive_cubic");
-    let use_naive_quadratic = matches.is_present("use_naive_quadratic");
+    let algorithm = if matches.is_present("use_naive") {
+        Algorithm::Naive
+    } else if matches.is_present("use_naive_cubic") {
+        Algorithm::NaiveCubic
+    } else if matches.is_present("use_naive_quadratic") {
+        Algorithm::NaiveQuadratic
+    } else {
+        Algorithm::ICDT19
+    };
 
     let debug_infos = matches.is_present("debug_infos");
 
@@ -196,13 +210,8 @@ fn main() {
         let benchmarks = benchmark::BenchmarkCase::read_from_file(&path).unwrap();
         let mut first = true;
         for benchmark in benchmarks {
-            let result;
             println!("{}", if first {""} else {","});
-            if use_naive_quadratic {
-                result = benchmark.run_quadratic().unwrap();
-            } else {
-                result = benchmark.run(repetitions).unwrap();
-            }
+            let result = benchmark.run(algorithm, repetitions).unwrap();
             print!("{}", serde_json::to_string_pretty(&result).unwrap());
             first = false;
         }
@@ -214,11 +223,7 @@ fn main() {
 
     if benchmark {
         let benchmark_case = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy);
-        let result = if use_naive_quadratic {
-            benchmark_case.run_quadratic().unwrap()
-            } else {
-            benchmark_case.run(repetitions).unwrap()
-        };
+        let result = benchmark_case.run(algorithm, repetitions).unwrap();
             
         print!("{}", serde_json::to_string_pretty(&result).unwrap());
 
@@ -316,15 +321,11 @@ fn main() {
         }
     }
 
-    
-    if use_naive {
-        handle_matches(&mut naive::naive::NaiveEnum::new(&automaton, &text), &text, &timer, display_format);
-    } else if use_naive_cubic {
-        handle_matches(&mut naive::naive_cubic::NaiveEnumCubic::new(regex_str, &text).unwrap(), &text, &timer, display_format);
-    } else if use_naive_quadratic {
-        handle_matches(&mut naive::naive_quadratic::NaiveEnumQuadratic::new(regex_str, &text), &text, &timer, display_format);
-    } else {
-        handle_matches(&mut IndexedDag::new(automaton, &text, jump_distance, trimming_strategy, true), &text, &timer, display_format);
+    match algorithm {
+        Algorithm::Naive => handle_matches(&mut naive::naive::NaiveEnum::new(&automaton, &text), &text, &timer, display_format),
+        Algorithm::NaiveCubic => handle_matches(&mut naive::naive_cubic::NaiveEnumCubic::new(regex_str, &text).unwrap(), &text, &timer, display_format),
+        Algorithm::NaiveQuadratic => handle_matches(&mut naive::naive_quadratic::NaiveEnumQuadratic::new(regex_str, &text), &text, &timer, display_format),
+        Algorithm::ICDT19 => handle_matches(&mut IndexedDag::new(automaton, &text, jump_distance, trimming_strategy, true), &text, &timer, display_format),
     }
 
     //  ____       _                   ___        __

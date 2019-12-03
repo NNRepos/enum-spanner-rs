@@ -3,6 +3,7 @@ use std::path::Path;
 use std::io::prelude::*;
 use std::time::Instant;
 use super::mapping::{SpannerEnumerator,indexed_dag::{IndexedDag,TrimmingStrategy}};
+use super::Algorithm;
 
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +37,6 @@ pub struct BenchmarkResult {
     num_results: usize,
     width_avg: f64,
     width_max: usize,
-    compile_regex: f64,
     preprocess: f64,
     create_dag: Option<f64>,
     trim_dag: Option<f64>,
@@ -86,55 +86,11 @@ impl BenchmarkCase {
         }
     }
 
-    pub fn run_quadratic(&self) -> Result<BenchmarkResult,std::io::Error> {
-        let mut input = String::new();
+    fn measure_delays<'a>(&'a self, count_matches: usize, compiled_matches: &impl SpannerEnumerator<'a>, k: usize) -> Option<Delay> {
+        if k == 0 {
+            return None;
+        }
 
-        // Read input file content.
-        File::open(&self.filename)?.take(match self.length {
-            Some(l) => l,
-            None => std::u64::MAX,
-        }).read_to_string(&mut input)?;
-
-        // Compile the regex.
-        let timer = Instant::now();
-        let naive = naive::naive_quadratic::NaiveEnumQuadratic::new(&self.regex, &input);
-        let iterator = naive.iter();
-        let compile_regex = timer.elapsed();
-
-        // Count matches.
-        let timer = Instant::now();
-        let count_matches = iterator.count();
-        let enumerate = timer.elapsed();
-
-        Ok(BenchmarkResult {
-            benchmark: self.clone(),
-            num_states: 0,
-            num_results: count_matches,
-            num_matrices: 0,
-            num_used_matrices: 0,
-            matrix_avg_size:0.0 ,
-            matrix_max_size: 0,
-            matrix_avg_density: 0.0,
-            width_avg: 0.0,
-            width_max: 0,
-            compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
-            preprocess: 0.0,
-            enumerate: enumerate.as_nanos() as f64/1000000000.0,
-            delays: None,
-            memory_usage: 0,
-            memory_dag_max: 0,
-            memory_dag: 0,
-            memory_matrices: 0,
-            memory_jump_level: 0,
-            num_levels: 0,
-            create_dag: None,
-            trim_dag: None,
-            index_dag: None,
-        })
-
-    }
-
-    fn measure_delays(&self, count_matches: usize, compiled_matches: &IndexedDag, k: usize) -> Delay {
         let mut delays = Vec::with_capacity(k);
         // Do k iterations to get rid of outliers
         for _ in 0..k {
@@ -179,16 +135,30 @@ impl BenchmarkCase {
             hist[i as usize/1000]+=1;
         }
 
-        Delay {
+        Some(Delay {
             delay_min: min as f64 / 1000000000.0,
             delay_max: max as f64 / 1000000000.0,
             delay_avg: mean as f64 / 1000000000.0,
             delay_stddev: stddev as f64 / 1000000000.0,
             delay_hist: hist,
-        }
+        })
     }
 
-    pub fn run(&self, k: usize) -> Result<BenchmarkResult,std::io::Error> {
+    fn measure<'a>(&'a self, enumerator: &mut impl SpannerEnumerator<'a>) -> (usize, f64, f64) {
+        // Prepare the enumeration.
+        let timer = Instant::now();
+        enumerator.preprocess();
+        let preprocess = timer.elapsed();
+
+        // Count matches.
+        let timer = Instant::now();
+        let count_matches = enumerator.iter().count();
+        let enumerate = timer.elapsed();
+
+        (count_matches, preprocess.as_nanos() as f64 / 1000000000.0, enumerate.as_nanos() as f64 / 1000000000.0)
+    }
+
+    pub fn run(&self, algorithm: Algorithm, k: usize) -> Result<BenchmarkResult,std::io::Error> {
         let mut input = String::new();
         let trimming_strategy = match self.trimming {
             None => TrimmingStrategy::FullTrimming,
@@ -207,62 +177,137 @@ impl BenchmarkCase {
         }).read_to_string(&mut input)?;
 
         // Compile the regex.
-        let timer = Instant::now();
         let automaton = regex::compile(&self.regex);
-        let compile_regex = timer.elapsed();
 
         let num_states = automaton.get_nb_states();
-        let mut compiled_matches = IndexedDag::new(automaton, &input, jump_distance, trimming_strategy, false);
 
-        // Prepare the enumeration.
-        let timer = Instant::now();
-        compiled_matches.preprocess();
-        let preprocess = timer.elapsed();
+        match algorithm {
+            Algorithm::ICDT19 => {
+                let mut enumerator = IndexedDag::new(automaton, &input, jump_distance, trimming_strategy, false);
+                let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
+                let delays = self.measure_delays(count_matches, &enumerator, k);
+                let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = enumerator.get_statistics();
+                let (create_dag, trim_dag, index_dag) = enumerator.get_times();
+                let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = enumerator.get_memory_usage();
+                let num_levels = enumerator.num_levels();
 
-        // Count matches.
-        let timer = Instant::now();
-        let count_matches = compiled_matches.iter().count();
-        let enumerate = timer.elapsed();
+                Ok(BenchmarkResult {
+                    num_states,
+                    benchmark: self.clone(),
+                    num_results: count_matches,
+                    num_matrices,
+                    num_used_matrices,
+                    matrix_avg_size,
+                    matrix_max_size,
+                    matrix_avg_density,
+                    width_avg,
+                    width_max,
+                    preprocess,
+                    enumerate,
+                    memory_usage: dag_mem + matrices_mem + jump_level_mem,
+                    memory_dag_max: dag_mem_max,
+                    memory_dag: dag_mem,
+                    memory_matrices: matrices_mem,
+                    memory_jump_level: jump_level_mem,
+                    num_levels,
+                    create_dag: create_dag.map(|t| t.as_nanos() as f64/1000000000.0),
+                    trim_dag: trim_dag.map(|t| t.as_nanos() as f64/1000000000.0),
+                    index_dag: index_dag.map(|t| t.as_nanos() as f64/1000000000.0),
+                    delays,
+                })
+            },
+            Algorithm::Naive => {
+                let mut enumerator = naive::naive::NaiveEnum::new(&automaton, &input);
+                let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
+                let delays = self.measure_delays(count_matches, &enumerator, k);
 
-        let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = compiled_matches.get_statistics();
+                Ok(BenchmarkResult {
+                    benchmark: self.clone(),
+                    num_states: 0,
+                    num_results: count_matches,
+                    num_matrices: 0,
+                    num_used_matrices: 0,
+                    matrix_avg_size:0.0 ,
+                    matrix_max_size: 0,
+                    matrix_avg_density: 0.0,
+                    width_avg: 0.0,
+                    width_max: 0,
+                    preprocess,
+                    enumerate,
+                    delays,
+                    memory_usage: 0,
+                    memory_dag_max: 0,
+                    memory_dag: 0,
+                    memory_matrices: 0,
+                    memory_jump_level: 0,
+                    num_levels: 0,
+                    create_dag: None,
+                    trim_dag: None,
+                    index_dag: None,
+                })
+            },
+            Algorithm::NaiveQuadratic => {
+                let mut enumerator = naive::naive_quadratic::NaiveEnumQuadratic::new(&self.regex, &input);
+                let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
+                let delays = self.measure_delays(count_matches, &enumerator, k);
 
-        let (create_dag, trim_dag, index_dag) = compiled_matches.get_times();
+                Ok(BenchmarkResult {
+                    benchmark: self.clone(),
+                    num_states: 0,
+                    num_results: count_matches,
+                    num_matrices: 0,
+                    num_used_matrices: 0,
+                    matrix_avg_size:0.0 ,
+                    matrix_max_size: 0,
+                    matrix_avg_density: 0.0,
+                    width_avg: 0.0,
+                    width_max: 0,
+                    preprocess,
+                    enumerate,
+                    delays,
+                    memory_usage: 0,
+                    memory_dag_max: 0,
+                    memory_dag: 0,
+                    memory_matrices: 0,
+                    memory_jump_level: 0,
+                    num_levels: 0,
+                    create_dag: None,
+                    trim_dag: None,
+                    index_dag: None,
+                })
+            },            
+            Algorithm::NaiveCubic => {
+                let mut enumerator = naive::naive_cubic::NaiveEnumCubic::new(&self.regex, &input).unwrap();
+                let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
+                let delays = self.measure_delays(count_matches, &enumerator, k);
 
-        let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = compiled_matches.get_memory_usage();
-
-        let delays;
-        if k==0 {
-            delays = None;
-        } else {
-            delays = Some(self.measure_delays(count_matches, &compiled_matches, k));
+                Ok(BenchmarkResult {
+                    benchmark: self.clone(),
+                    num_states: 0,
+                    num_results: count_matches,
+                    num_matrices: 0,
+                    num_used_matrices: 0,
+                    matrix_avg_size:0.0 ,
+                    matrix_max_size: 0,
+                    matrix_avg_density: 0.0,
+                    width_avg: 0.0,
+                    width_max: 0,
+                    preprocess,
+                    enumerate,
+                    delays,
+                    memory_usage: 0,
+                    memory_dag_max: 0,
+                    memory_dag: 0,
+                    memory_matrices: 0,
+                    memory_jump_level: 0,
+                    num_levels: 0,
+                    create_dag: None,
+                    trim_dag: None,
+                    index_dag: None,
+                })
+            },            
         }
 
-
-        Ok(BenchmarkResult {
-            num_states,
-            benchmark: self.clone(),
-            num_results: count_matches,
-            num_matrices,
-            num_used_matrices,
-            matrix_avg_size,
-            matrix_max_size,
-            matrix_avg_density,
-            width_avg,
-            width_max,
-            compile_regex: compile_regex.as_nanos() as f64/1000000000.0,
-            preprocess: preprocess.as_nanos() as f64/1000000000.0,
-            enumerate: enumerate.as_nanos() as f64/1000000000.0,
-            memory_usage: dag_mem + matrices_mem + jump_level_mem,
-            memory_dag_max: dag_mem_max,
-            memory_dag: dag_mem,
-            memory_matrices: matrices_mem,
-            memory_jump_level: jump_level_mem,
-            num_levels: compiled_matches.num_levels(),
-            create_dag: create_dag.map(|t| t.as_nanos() as f64/1000000000.0),
-            trim_dag: trim_dag.map(|t| t.as_nanos() as f64/1000000000.0),
-            index_dag: index_dag.map(|t| t.as_nanos() as f64/1000000000.0),
-            delays,
-        })
     }   
 }
 
