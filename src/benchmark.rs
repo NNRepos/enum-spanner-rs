@@ -186,10 +186,10 @@ impl BenchmarkCase {
                 let mut enumerator = IndexedDag::new(automaton, &input, jump_distance, trimming_strategy, false);
                 let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
                 let delays = self.measure_delays(count_matches, &enumerator, k);
-                let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = enumerator.get_statistics();
+                let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = enumerator.get_statistics().unwrap_or((0,0,0.0,0,0.0,0,0.0));
                 let (create_dag, trim_dag, index_dag) = enumerator.get_times();
-                let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = enumerator.get_memory_usage();
-                let num_levels = enumerator.num_levels();
+                let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = enumerator.get_memory_usage().unwrap_or((0,0,0,0));
+                let num_levels = enumerator.num_levels().unwrap_or(0);
 
                 Ok(BenchmarkResult {
                     num_states,

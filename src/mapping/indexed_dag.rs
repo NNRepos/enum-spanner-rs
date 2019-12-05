@@ -60,8 +60,8 @@ impl<'t> IndexedDag<'t> {
         }
     }
 
-    pub fn num_levels(&self) -> usize {
-        self.jump.as_ref().unwrap().num_levels()
+    pub fn num_levels(&self) -> Option<usize> {
+        self.jump.as_ref().map(|j| j.num_levels())
     }
 
     pub fn get_times(&self) -> (Option<Duration>, Option<Duration>, Option<Duration>) {
@@ -99,12 +99,12 @@ impl<'t> IndexedDag<'t> {
         NextLevelIterator::explore(&self.automaton, expected_markers, gamma)
     }
 
-    pub fn get_memory_usage(&self) -> (usize,usize,usize,usize) {
-        self.jump.as_ref().unwrap().get_memory_usage()
+    pub fn get_memory_usage(&self) -> Option<(usize,usize,usize,usize)> {
+        self.jump.as_ref().map(|j| j.get_memory_usage())
     }
 
-    pub fn get_statistics(&self) -> (usize, usize, f64, usize, f64, usize, f64) {
-		self.jump.as_ref().unwrap().get_statistics()
+    pub fn get_statistics(&self) -> Option<(usize, usize, f64, usize, f64, usize, f64)> {
+		self.jump.as_ref().map(|j| j.get_statistics())
 	}
 }
 
@@ -211,16 +211,16 @@ struct IndexedDagIterator<'i, 't> {
 
 impl<'i, 't> IndexedDagIterator<'i, 't> {
     fn init(indexed_dag: &'i IndexedDag<'t>) -> IndexedDagIterator<'i, 't> {
-        let mut start = indexed_dag
-            .jump.as_ref().unwrap()
-            .finals().clone();
-		start.intersect_with(&indexed_dag.automaton.finals);
-
         IndexedDagIterator {
             indexed_dag,
             stack: match &indexed_dag.jump {
                 None => Vec::new(),
-                Some(j) => vec![(j.num_levels()-1, start, Vec::new())],
+                Some(j) => {
+                    let mut start = j.finals().clone();
+            		start.intersect_with(&indexed_dag.automaton.finals);
+
+                    vec![(j.num_levels()-1, start, Vec::new())]
+                },
             },
 
             // `curr_next_level` is initialized empty, thus theses values will
