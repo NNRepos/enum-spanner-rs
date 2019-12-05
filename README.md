@@ -55,6 +55,8 @@ example will extract any group of a's followed by a group of b's.
 
 If no named group is specified, the algorithm will implicitly assume a group named `match` that captures the whole expression.
 
+If a double underscore appears in a group name, the double underscore and evrything behing is stripped. This allows to workaround a limitation in rust regexp handling, where a group name has to be unique. To use the same group name several times just use a\_\_1, a\_\_2, etc.
+
 Supported Syntax for Regular Expressions
 ----------------------------------------
 
