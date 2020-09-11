@@ -5,7 +5,7 @@ use super::automaton::Automaton;
 
 pub fn compile(regex: &str) -> Automaton {
     let hir = parse::Hir::from_regex(&regex, false);
-    
+
     glushkov::LocalLang::from_hir(hir, 0).into_automaton()
 }
 
@@ -23,7 +23,6 @@ pub fn is_match(regex: &str, text: &str) -> bool {
     let ret = matches.iter().next().is_some();
     ret
 }
-
 
 #[cfg(test)]
 mod tests;

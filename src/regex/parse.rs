@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use regex_syntax;
 use regex_syntax::hir::GroupKind as LibGroup;
@@ -31,10 +31,10 @@ pub enum Hir {
 
 impl Hir {
     pub fn from_regex(regex: &str, raw: bool) -> Hir {
-        let (anchor_begin,anchor_end,regex) = if raw {
-            (true,true,regex.to_string())
+        let (anchor_begin, anchor_end, regex) = if raw {
+            (true, true, regex.to_string())
         } else {
-            Hir::reformat (regex)
+            Hir::reformat(regex)
         };
 
         let mut variables = HashMap::new();
@@ -49,32 +49,42 @@ impl Hir {
         if raw {
             return hir;
         }
-        
+
         let hir = match variables.len() {
             0 => {
                 let var = Rc::new(Variable::new("match".to_string(), 0));
                 let marker_open = Label::Assignation(Marker::Open(var.clone()));
                 let marker_close = Label::Assignation(Marker::Close(var));
-                
-                Hir::concat(Hir::Concat(Box::new(Hir::label(marker_open)), Box::new(hir)),
-                            Hir::label(marker_close))
-            },
-            _ => hir
+
+                Hir::concat(
+                    Hir::Concat(Box::new(Hir::label(marker_open)), Box::new(hir)),
+                    Hir::label(marker_close),
+                )
+            }
+            _ => hir,
         };
 
         let any = match regex_syntax::hir::Hir::any(false).into_kind() {
             LibHir::Class(x) => x,
-            _ => panic!("LibHir broken!")
+            _ => panic!("LibHir broken!"),
         };
 
         let hir = match anchor_begin {
             true => hir,
-            false => Hir::concat(Hir::option(Hir::closure(Hir::label(Label::Atom(Atom::Class(any.clone()))))), hir)
+            false => Hir::concat(
+                Hir::option(Hir::closure(Hir::label(Label::Atom(Atom::Class(
+                    any.clone(),
+                ))))),
+                hir,
+            ),
         };
 
         match anchor_end {
             true => hir,
-            false => Hir::concat(hir, Hir::option(Hir::closure(Hir::label(Label::Atom(Atom::Class(any))))))
+            false => Hir::concat(
+                hir,
+                Hir::option(Hir::closure(Hir::label(Label::Atom(Atom::Class(any))))),
+            ),
         }
     }
 
@@ -83,7 +93,10 @@ impl Hir {
     /// It also takes as an input the counter of already created variables and
     /// return the count of variables that have been created in the generated
     /// Hir.
-    fn from_lib_hir(hir: regex_syntax::hir::Hir, variables: &mut HashMap<String,Rc<Variable>>) -> Hir {
+    fn from_lib_hir(
+        hir: regex_syntax::hir::Hir,
+        variables: &mut HashMap<String, Rc<Variable>>,
+    ) -> Hir {
         match hir.into_kind() {
             LibHir::Empty => Hir::epsilon(),
 
@@ -107,18 +120,23 @@ impl Hir {
                 let new_hir = match group.kind {
                     LibGroup::NonCapturing | LibGroup::CaptureIndex(_) => subtree,
                     LibGroup::CaptureName { name, index: _ } => {
-						let real_name = match name.find("__") {
+                        let real_name = match name.find("__") {
                             None => name.clone(),
                             Some(i) => name[0..i].to_string(),
                         };
 
-                        let var = variables.get(&real_name).map(|v| v.clone()).unwrap_or_else(|| {
-                            let x = Rc::new(Variable::new(real_name.clone(), variables.len()));
-                            variables.insert(real_name,x.clone());
-                            
-                            x
-                        });
-                        
+                        let var =
+                            variables
+                                .get(&real_name)
+                                .map(|v| v.clone())
+                                .unwrap_or_else(|| {
+                                    let x =
+                                        Rc::new(Variable::new(real_name.clone(), variables.len()));
+                                    variables.insert(real_name, x.clone());
+
+                                    x
+                                });
+
                         let marker_open = Label::Assignation(Marker::Open(var.clone()));
                         let marker_close = Label::Assignation(Marker::Close(var));
 
@@ -194,7 +212,7 @@ impl Hir {
             let mut optionals = Hir::epsilon();
 
             for _ in min..max {
-                optionals = Hir::option(Hir::concat(hir.clone(),optionals));
+                optionals = Hir::option(Hir::concat(hir.clone(), optionals));
             }
 
             result = Hir::concat(result, optionals);
@@ -203,7 +221,7 @@ impl Hir {
         result
     }
 
-    fn reformat(regex: &str) -> (bool,bool,String) {
+    fn reformat(regex: &str) -> (bool, bool, String) {
         let mut regex = String::from(regex);
 
         let anchor_begin = Some(&b'^') == regex.as_bytes().first();
@@ -218,7 +236,6 @@ impl Hir {
             regex.remove(regex.len() - 1);
         }
 
-        (anchor_begin,anchor_end,regex)
+        (anchor_begin, anchor_end, regex)
     }
-
 }

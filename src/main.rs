@@ -2,25 +2,25 @@ mod automaton;
 mod benchmark;
 mod mapping;
 mod matrix;
+mod naive;
 mod progress;
 mod regex;
-mod naive;
 
+extern crate bit_vec;
 extern crate clap;
 extern crate regex as lib_regex;
 extern crate regex_syntax;
-extern crate bit_vec;
 
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::stdin;
-use std::time;
 use std::path::Path;
+use std::time;
 
-use clap::{App, Arg};
-use mapping::{SpannerEnumerator};
-use mapping::indexed_dag::{IndexedDag,TrimmingStrategy};
 use benchmark::BenchmarkCase;
+use clap::{App, Arg};
+use mapping::indexed_dag::{IndexedDag, TrimmingStrategy};
+use mapping::SpannerEnumerator;
 
 #[derive(PartialEq, Eq)]
 enum DisplayFormat {
@@ -32,7 +32,7 @@ enum DisplayFormat {
     Verbose { show_offset: bool },
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub enum Algorithm {
     ICDT19,
     Naive,
@@ -146,12 +146,10 @@ fn main() {
     let benchmark = matches.is_present("benchmark");
     let repetitions = match matches.value_of("repetitions") {
         None => 0,
-        Some(s) => {
-	        match s.parse::<usize>() {
-		        Ok(n) => n,
-                Err(_) => panic!("Not a number: {}", s),
-	        }
-        }
+        Some(s) => match s.parse::<usize>() {
+            Ok(n) => n,
+            Err(_) => panic!("Not a number: {}", s),
+        },
     };
     let count = matches.is_present("count");
     let show_offset = matches.is_present("bytes_offset");
@@ -180,13 +178,11 @@ fn main() {
 
     let jump_distance_str = matches.value_of("jump_distance");
     let jump_distance = match jump_distance_str {
-	    None => 1,
-        Some(s) => {
-	        match s.parse::<usize>() {
-		        Ok(n) => n,
-                Err(_) => panic!("Not a number: {}", s),
-	        }
-        }
+        None => 1,
+        Some(s) => match s.parse::<usize>() {
+            Ok(n) => n,
+            Err(_) => panic!("Not a number: {}", s),
+        },
     };
 
     let display_format = match (count, compare_format, show_offset) {
@@ -210,7 +206,7 @@ fn main() {
         let benchmarks = benchmark::BenchmarkCase::read_from_file(&path).unwrap();
         let mut first = true;
         for benchmark in benchmarks {
-            println!("{}", if first {""} else {","});
+            println!("{}", if first { "" } else { "," });
             let result = benchmark.run(algorithm, repetitions).unwrap();
             print!("{}", serde_json::to_string_pretty(&result).unwrap());
             first = false;
@@ -222,14 +218,20 @@ fn main() {
     let regex_str = matches.value_of("regex").unwrap();
 
     if benchmark {
-        let benchmark_case = BenchmarkCase::new("CLI Benchmark".to_string(), "Benchmark invoked by CLI.".to_string(), matches.value_of("file").unwrap().to_string(), regex_str.to_string(), jump_distance, trimming_strategy);
+        let benchmark_case = BenchmarkCase::new(
+            "CLI Benchmark".to_string(),
+            "Benchmark invoked by CLI.".to_string(),
+            matches.value_of("file").unwrap().to_string(),
+            regex_str.to_string(),
+            jump_distance,
+            trimming_strategy,
+        );
         let result = benchmark_case.run(algorithm, repetitions).unwrap();
-            
+
         print!("{}", serde_json::to_string_pretty(&result).unwrap());
 
         return;
     }
-
 
     //  ___                   _
     // |_ _|_ __  _ __  _   _| |_ ___
@@ -322,10 +324,30 @@ fn main() {
     }
 
     match algorithm {
-        Algorithm::Naive => handle_matches(&mut naive::naive::NaiveEnum::new(&automaton, &text), &text, &timer, display_format),
-        Algorithm::NaiveCubic => handle_matches(&mut naive::naive_cubic::NaiveEnumCubic::new(regex_str, &text).unwrap(), &text, &timer, display_format),
-        Algorithm::NaiveQuadratic => handle_matches(&mut naive::naive_quadratic::NaiveEnumQuadratic::new(regex_str, &text), &text, &timer, display_format),
-        Algorithm::ICDT19 => handle_matches(&mut IndexedDag::new(automaton, &text, jump_distance, trimming_strategy, true), &text, &timer, display_format),
+        Algorithm::Naive => handle_matches(
+            &mut naive::naive::NaiveEnum::new(&automaton, &text),
+            &text,
+            &timer,
+            display_format,
+        ),
+        Algorithm::NaiveCubic => handle_matches(
+            &mut naive::naive_cubic::NaiveEnumCubic::new(regex_str, &text).unwrap(),
+            &text,
+            &timer,
+            display_format,
+        ),
+        Algorithm::NaiveQuadratic => handle_matches(
+            &mut naive::naive_quadratic::NaiveEnumQuadratic::new(regex_str, &text),
+            &text,
+            &timer,
+            display_format,
+        ),
+        Algorithm::ICDT19 => handle_matches(
+            &mut IndexedDag::new(automaton, &text, jump_distance, trimming_strategy, true),
+            &text,
+            &timer,
+            display_format,
+        ),
     }
 
     //  ____       _                   ___        __

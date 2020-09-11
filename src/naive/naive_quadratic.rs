@@ -7,10 +7,8 @@
 use std::ops;
 
 use super::super::automaton::Automaton;
+use super::super::mapping::{Mapping, SpannerEnumerator};
 use super::super::regex;
-use super::super::mapping::{Mapping,SpannerEnumerator};
-
-
 
 //  _   _       _              ___                  _           _   _
 // | \ | | __ _(_)_   _____   / _ \ _   _  __ _  __| |_ __ __ _| |_(_) ___
@@ -27,15 +25,15 @@ use super::super::mapping::{Mapping,SpannerEnumerator};
 
 pub struct NaiveEnumQuadratic<'t> {
     automaton: Automaton,
-    text:      &'t str,
+    text: &'t str,
 }
 
 pub struct NaiveEnumQuadraticIterator<'t> {
     automaton: Automaton,
-    text:      &'t str,
+    text: &'t str,
     // Current state of the iteration
-    curr_states:         Vec<bool>,
-    char_iterator_end:   std::str::CharIndices<'t>,
+    curr_states: Vec<bool>,
+    char_iterator_end: std::str::CharIndices<'t>,
     char_iterator_start: std::str::CharIndices<'t>,
 }
 
@@ -43,17 +41,14 @@ impl<'t> NaiveEnumQuadratic<'t> {
     pub fn new(regex_str: &str, text: &'t str) -> NaiveEnumQuadratic<'t> {
         let automaton = regex::compile_raw(regex_str);
 
-        NaiveEnumQuadratic {
-            automaton,
-            text,
-        }
+        NaiveEnumQuadratic { automaton, text }
     }
 }
 
 impl<'t> SpannerEnumerator<'t> for NaiveEnumQuadratic<'t> {
     fn preprocess(&mut self) {}
 
-    fn iter<'i>(&'i self) -> Box<dyn Iterator<Item = Mapping<'t>> +'i> {
+    fn iter<'i>(&'i self) -> Box<dyn Iterator<Item = Mapping<'t>> + 'i> {
         // Init automata states
         let mut initial_states = vec![false; self.automaton.nb_states];
         initial_states[self.automaton.get_initial()] = true;
@@ -107,7 +102,7 @@ impl<'t> Iterator for NaiveEnumQuadraticIterator<'t> {
                         self.text,
                         ops::Range {
                             start: curr_start,
-                            end:   curr_end,
+                            end: curr_end,
                         },
                     ));
                 }

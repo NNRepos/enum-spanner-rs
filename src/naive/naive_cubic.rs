@@ -2,8 +2,7 @@ use lib_regex;
 
 use std::ops;
 
-use super::super::mapping::{Mapping,SpannerEnumerator};
-
+use super::super::mapping::{Mapping, SpannerEnumerator};
 
 //  _   _       _              ____      _     _
 // | \ | | __ _(_)_   _____   / ___|   _| |__ (_) ___
@@ -17,15 +16,15 @@ use super::super::mapping::{Mapping,SpannerEnumerator};
 
 pub struct NaiveEnumCubic<'t> {
     regex: lib_regex::Regex,
-    text:  &'t str,
+    text: &'t str,
 }
 
 pub struct NaiveEnumCubicIterator<'t> {
     regex: lib_regex::Regex,
-    text:  &'t str,
+    text: &'t str,
     // Current state of the iteration
     char_iterator_start: std::str::CharIndices<'t>,
-    char_iterator_end:   std::str::CharIndices<'t>,
+    char_iterator_end: std::str::CharIndices<'t>,
 }
 
 impl<'t> NaiveEnumCubic<'t> {
@@ -63,7 +62,7 @@ impl<'t> Iterator for NaiveEnumCubicIterator<'t> {
                         self.text,
                         ops::Range {
                             start: curr_start,
-                            end:   curr_end,
+                            end: curr_end,
                         },
                     ));
                 }

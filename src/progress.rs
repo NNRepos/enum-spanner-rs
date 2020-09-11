@@ -16,8 +16,7 @@ static BAR_SIZE: usize = 40;
 static REFRESH_DELAY: u128 = 100;
 
 static PREFIXES: &[&str] = &["it", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"];
-static SPINNER: &str =
-    "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ";
+static SPINNER: &str = "⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈ ";
 
 //  ____
 // |  _ \ _ __ ___   __ _ _ __ ___  ___ ___
@@ -136,7 +135,8 @@ where
 {
     pub fn from_iter(iterator: T) -> Progress<T, U> {
         let max_iterations = iterator
-            .size_hint().1
+            .size_hint()
+            .1
             .expect("Impossible to init progress bar for objects larger than a 64 bits integer");
 
         Progress {

@@ -6,7 +6,7 @@ use super::super::progress::Progress;
 use super::jump::Jump;
 use bit_set::BitSet;
 use serde::{Deserialize, Serialize};
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 //  ___           _                   _ ____
 // |_ _|_ __   __| | _____  _____  __| |  _ \  __ _  __ _
@@ -21,11 +21,11 @@ use std::time::{Instant, Duration};
 /// the input automata over the input text (polynomial preprocessing and
 /// constant delay iteration).
 pub struct IndexedDag<'t> {
-    automaton:    Automaton,
-    text:         &'t str,
+    automaton: Automaton,
+    text: &'t str,
     jump_distance: usize,
     trimming_strategy: TrimmingStrategy,
-    jump:         Option<Jump>,
+    jump: Option<Jump>,
     toggle_progress: bool,
     create_dag_time: Option<Duration>,
     trim_time: Option<Duration>,
@@ -43,7 +43,7 @@ impl<'t> IndexedDag<'t> {
     pub fn new(
         automaton: Automaton,
         text: &str,
-		jump_distance: usize,
+        jump_distance: usize,
         trimming_strategy: TrimmingStrategy,
         toggle_progress: bool,
     ) -> IndexedDag {
@@ -65,7 +65,7 @@ impl<'t> IndexedDag<'t> {
     }
 
     pub fn get_times(&self) -> (Option<Duration>, Option<Duration>, Option<Duration>) {
-        (self.create_dag_time,self.trim_time,self.index_time)
+        (self.create_dag_time, self.trim_time, self.index_time)
     }
 
     fn next_level<'a>(&'a self, gamma: BitSet) -> NextLevelIterator<'a> {
@@ -75,37 +75,36 @@ impl<'t> IndexedDag<'t> {
         // UODO: It might still be slower to just using the list of all variables in the
         // automaton?
         let mut k = BitSet::new();
-		let mut expected_markers = Vec::<&'a Marker>::new();
+        let mut expected_markers = Vec::<&'a Marker>::new();
         let mut states = gamma.clone();
-    	let mut new_states = gamma.clone();
+        let mut new_states = gamma.clone();
 
-
-		while !new_states.is_empty() {
-			let source=new_states.iter().next().unwrap();
-			new_states.remove(source);
-           	for (label, target) in &adj[source] {
-				let label_id = label.get_marker().unwrap().get_id();
-				if !k.contains(label_id) {
-                   	expected_markers.push(&label.get_marker().unwrap());
-                   	k.insert(label_id);
-				}
-				if !states.contains(*target) {
-           			states.insert(*target);
-					new_states.insert(*target);
-				}
-           	}
-		}
+        while !new_states.is_empty() {
+            let source = new_states.iter().next().unwrap();
+            new_states.remove(source);
+            for (label, target) in &adj[source] {
+                let label_id = label.get_marker().unwrap().get_id();
+                if !k.contains(label_id) {
+                    expected_markers.push(&label.get_marker().unwrap());
+                    k.insert(label_id);
+                }
+                if !states.contains(*target) {
+                    states.insert(*target);
+                    new_states.insert(*target);
+                }
+            }
+        }
 
         NextLevelIterator::explore(&self.automaton, expected_markers, gamma)
     }
 
-    pub fn get_memory_usage(&self) -> Option<(usize,usize,usize,usize)> {
+    pub fn get_memory_usage(&self) -> Option<(usize, usize, usize, usize)> {
         self.jump.as_ref().map(|j| j.get_memory_usage())
     }
 
     pub fn get_statistics(&self) -> Option<(usize, usize, f64, usize, usize, f64)> {
-		self.jump.as_ref().map(|j| j.get_statistics())
-	}
+        self.jump.as_ref().map(|j| j.get_statistics())
+    }
 }
 
 impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
@@ -119,10 +118,10 @@ impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
         let mut jump = Jump::new(
             iter::once(self.automaton.get_initial()),
             self.automaton.get_closure_for_assignations(),
-			self.automaton.get_jump_states(),
-			self.text.len() + 1,
-			self.automaton.get_nb_states(),
-			self.jump_distance,
+            self.automaton.get_jump_states(),
+            self.text.len() + 1,
+            self.automaton.get_nb_states(),
+            self.jump_distance,
         );
 
         let closure_for_assignations = self.automaton.get_closure_for_assignations().clone();
@@ -130,8 +129,7 @@ impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
         let start_time = Instant::now();
 
         let chars = self.text.chars();
-        let mut progress = Progress::from_iter(chars)
-            .auto_refresh(self.toggle_progress);
+        let mut progress = Progress::from_iter(chars).auto_refresh(self.toggle_progress);
 
         while let Some(curr_char) = progress.next() {
             let adj_for_char = self.automaton.get_adj_for_char_with_closure(curr_char);
@@ -149,7 +147,7 @@ impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
         if self.trimming_strategy == TrimmingStrategy::FullTrimming {
             jump.trim_last_level(&self.automaton.finals, &closure_for_assignations);
         }
-	
+
         if jump.is_disconnected() {
             return;
         }
@@ -157,9 +155,8 @@ impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
         if self.trimming_strategy != TrimmingStrategy::NoTrimming {
             let chars = self.text.chars();
             let mut level = jump.get_last_level();
-            let mut progress = Progress::from_iter(chars.rev())
-                .auto_refresh(self.toggle_progress);
-        
+            let mut progress = Progress::from_iter(chars.rev()).auto_refresh(self.toggle_progress);
+
             while let Some(curr_char) = progress.next() {
                 let rev_adj_for_char = self.automaton.get_rev_adj_for_char_with_closure(curr_char);
                 jump.trim_level(level, rev_adj_for_char);
@@ -170,14 +167,13 @@ impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
         self.trim_time = Some(start_time.elapsed());
         let start_time = Instant::now();
         let chars = self.text.chars();
-        let mut progress = Progress::from_iter(chars)
-            .auto_refresh(self.toggle_progress);
+        let mut progress = Progress::from_iter(chars).auto_refresh(self.toggle_progress);
         let mut level = 1;
 
         while let Some(curr_char) = progress.next() {
             let adj_for_char = self.automaton.get_adj_for_char(curr_char);
             jump.init_reach(level, curr_char, adj_for_char, &closure_for_assignations);
-            level+=1;
+            level += 1;
         }
 
         self.index_time = Some(start_time.elapsed());
@@ -185,7 +181,6 @@ impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
         self.jump = Some(jump);
     }
 }
-
 
 //  ___           _                   _
 // |_ _|_ __   __| | _____  _____  __| |
@@ -201,12 +196,12 @@ impl<'t> SpannerEnumerator<'t> for IndexedDag<'t> {
 
 struct IndexedDagIterator<'i, 't> {
     indexed_dag: &'i IndexedDag<'t>,
-    stack:       Vec<(usize, BitSet, Vec<(&'i Marker, usize)>)>,
+    stack: Vec<(usize, BitSet, Vec<(&'i Marker, usize)>)>,
 
-    curr_level:      usize,
-    curr_mapping:    Vec<(&'i Marker, usize)>,
+    curr_level: usize,
+    curr_mapping: Vec<(&'i Marker, usize)>,
     curr_next_level: NextLevelIterator<'i>,
-    num_vars: usize
+    num_vars: usize,
 }
 
 impl<'i, 't> IndexedDagIterator<'i, 't> {
@@ -217,10 +212,10 @@ impl<'i, 't> IndexedDagIterator<'i, 't> {
                 None => Vec::new(),
                 Some(j) => {
                     let mut start = j.finals().clone();
-            		start.intersect_with(&indexed_dag.automaton.finals);
+                    start.intersect_with(&indexed_dag.automaton.finals);
 
-                    vec![(j.num_levels()-1, start, Vec::new())]
-                },
+                    vec![(j.num_levels() - 1, start, Vec::new())]
+                }
             },
 
             // `curr_next_level` is initialized empty, thus theses values will
@@ -244,18 +239,25 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                     continue;
                 }
 
-//				print!("NLI output: ");
-//				for m in s_p.iter() {
-//					print!("{} ", m);
-//				}
-//				for q in new_gamma.iter() {
-//					print!{"q{} ", q};
-//				}
-//				println!("");
+                //				print!("NLI output: ");
+                //				for m in s_p.iter() {
+                //					print!("{} ", m);
+                //				}
+                //				for q in new_gamma.iter() {
+                //					print!{"q{} ", q};
+                //				}
+                //				println!("");
 
                 let mut new_mapping = self.curr_mapping.clone();
                 for marker in s_p {
-                    new_mapping.push((marker, self.indexed_dag.jump.as_ref().unwrap().get_pos(self.curr_level)));
+                    new_mapping.push((
+                        marker,
+                        self.indexed_dag
+                            .jump
+                            .as_ref()
+                            .unwrap()
+                            .get_pos(self.curr_level),
+                    ));
                 }
 
                 if self.curr_level == 0 {
@@ -269,15 +271,17 @@ impl<'i, 't> Iterator for IndexedDagIterator<'i, 't> {
                         return Some(Mapping::from_markers(
                             self.indexed_dag.text,
                             aligned_markers,
-                            self.num_vars
+                            self.num_vars,
                         ));
                     }
                 } else if let Some(jump_level) = self
                     .indexed_dag
-                    .jump.as_ref().unwrap()
+                    .jump
+                    .as_ref()
+                    .unwrap()
                     .jump(self.curr_level, &mut new_gamma)
                 {
-	                self.stack.push((jump_level, new_gamma, new_mapping));
+                    self.stack.push((jump_level, new_gamma, new_mapping));
                 }
             }
 
@@ -321,11 +325,11 @@ struct NextLevelIterator<'a> {
     /// The current state of the iterator
     stack: Vec<(BitSet, BitSet, Vec<&'a Marker>)>,
 
-	/// finished enumerating
-	done: bool,
+    /// finished enumerating
+    done: bool,
 
-	/// the only partial mapping to return is the empty one
-	almost_done: bool,
+    /// the only partial mapping to return is the empty one
+    almost_done: bool,
 }
 
 impl<'a> NextLevelIterator<'a> {
@@ -336,8 +340,8 @@ impl<'a> NextLevelIterator<'a> {
             automaton,
             expected_markers: Vec::new(),
             gamma: BitSet::new(),
-			done: true,
-			almost_done: true,
+            done: true,
+            almost_done: true,
         }
     }
 
@@ -352,105 +356,102 @@ impl<'a> NextLevelIterator<'a> {
             expected_markers: expected_markers.into_iter().collect(),
             gamma,
             stack: vec![(BitSet::new(), BitSet::new(), Vec::new())],
-			done: false,
-			almost_done: false,
+            done: false,
+            almost_done: false,
         }
     }
 
-    fn follow_sp_sm(
-        &self,
-        gamma: &BitSet,
-        s_p: &BitSet,
-        s_m: &BitSet,
-    ) -> BitSet {
+    fn follow_sp_sm(&self, gamma: &BitSet, s_p: &BitSet, s_m: &BitSet) -> BitSet {
         let adj = self.automaton.get_rev_assignations();
-		let num_states = self.automaton.get_nb_states();
-		let mut path_set: Vec<i32> = vec![-1; num_states];
-		let mut queue: Vec<_> = gamma.iter().map(|x| (x,0)).collect();
+        let num_states = self.automaton.get_nb_states();
+        let mut path_set: Vec<i32> = vec![-1; num_states];
+        let mut queue: Vec<_> = gamma.iter().map(|x| (x, 0)).collect();
 
-//		println!("follow_sp_sm({:?},{:?},{:?}): ", gamma, s_p, s_m);
+        //		println!("follow_sp_sm({:?},{:?},{:?}): ", gamma, s_p, s_m);
 
-		while let Some((source,num_labels)) = queue.pop() {
-//			println!("looking at ({},{})", source,num_labels);
-			if path_set[source]>=num_labels {
-				// we enumerate states in descending order and all (reverse) label-transitions are
-				// from larger ids to smaller ids. Thus there is nothing to gain here.
-				continue;
-			} 
-			
-			path_set[source] = num_labels;
-			
+        while let Some((source, num_labels)) = queue.pop() {
+            //			println!("looking at ({},{})", source,num_labels);
+            if path_set[source] >= num_labels {
+                // we enumerate states in descending order and all (reverse) label-transitions are
+                // from larger ids to smaller ids. Thus there is nothing to gain here.
+                continue;
+            }
+
+            path_set[source] = num_labels;
+
             for (label, target) in &adj[source] {
                 let label = label.get_marker().unwrap().get_id();
-				
-				if s_m.contains(label) || (path_set[*target]>num_labels) {
-					continue;
-				}
-				
-				if s_p.contains(label) {
-					queue.push((*target,num_labels+1));
-//					println!("found label {} to target {}", label, target);
-				} else {
-					if path_set[*target] < num_labels {
-//						println!("found non-sp label {} to target {}", label, target);
-						queue.push((*target,num_labels));
-					}
-				}
-			}			
-		}
-		
-		let num_labels_expected = s_p.len();
-		
-//		println!("path_set: {:?}", path_set);
-		
-		let result = path_set.iter().enumerate().filter_map(|(vertex,num_labels)| match num_labels {
-			&num if num>=num_labels_expected as i32 => Some(vertex),
-			_ => None,
-		}).collect();
-		
-//		println!("{:?}", result);
-		
-		result
-	}
-}
 
+                if s_m.contains(label) || (path_set[*target] > num_labels) {
+                    continue;
+                }
+
+                if s_p.contains(label) {
+                    queue.push((*target, num_labels + 1));
+                //					println!("found label {} to target {}", label, target);
+                } else {
+                    if path_set[*target] < num_labels {
+                        //						println!("found non-sp label {} to target {}", label, target);
+                        queue.push((*target, num_labels));
+                    }
+                }
+            }
+        }
+
+        let num_labels_expected = s_p.len();
+
+        //		println!("path_set: {:?}", path_set);
+
+        let result = path_set
+            .iter()
+            .enumerate()
+            .filter_map(|(vertex, num_labels)| match num_labels {
+                &num if num >= num_labels_expected as i32 => Some(vertex),
+                _ => None,
+            })
+            .collect();
+
+        //		println!("{:?}", result);
+
+        result
+    }
+}
 
 impl<'a> Iterator for NextLevelIterator<'a> {
     type Item = (Vec<&'a Marker>, BitSet);
 
     fn next(&mut self) -> Option<(Vec<&'a Marker>, BitSet)> {
-		if self.done {
-			return None
-		}
+        if self.done {
+            return None;
+        }
 
-		if self.almost_done {
-			let mut markers = Vec::new();
-	        let adj = self.automaton.get_rev_assignations();
-			let mut gamma2 = BitSet::new();
-			let marker = self.expected_markers[0];
-			let gamma = &self.gamma;
+        if self.almost_done {
+            let mut markers = Vec::new();
+            let adj = self.automaton.get_rev_assignations();
+            let mut gamma2 = BitSet::new();
+            let marker = self.expected_markers[0];
+            let gamma = &self.gamma;
 
-			markers.push(marker);
+            markers.push(marker);
 
             for source in gamma.iter() {
-				for (_, target) in &adj[source] {
+                for (_, target) in &adj[source] {
                     gamma2.insert(*target);
                 }
-			}
+            }
 
-			self.done = true;
+            self.done = true;
 
-			return Some((markers, gamma2))
-		}
+            return Some((markers, gamma2));
+        }
 
-		if self.expected_markers.len()<=1 {
-			self.almost_done = true;
+        if self.expected_markers.len() <= 1 {
+            self.almost_done = true;
             if self.expected_markers.is_empty() {
                 self.done = true;
             }
-			return Some((Vec::new(),self.gamma.clone()))
-		}
-
+            return Some((Vec::new(), self.gamma.clone()));
+        }
 
         while let Some((mut s_p, mut s_m, mut markers)) = self.stack.pop() {
             let mut gamma2 = Some(self.follow_sp_sm(&self.gamma, &s_p, &s_m));
@@ -461,10 +462,9 @@ impl<'a> Iterator for NextLevelIterator<'a> {
 
             while s_p.len() + s_m.len() < self.expected_markers.len() {
                 let depth = s_p.len() + s_m.len();
-				let next_marker = self.expected_markers[depth].get_id();
+                let next_marker = self.expected_markers[depth].get_id();
                 s_m.insert(next_marker);
                 gamma2 = Some(self.follow_sp_sm(&self.gamma, &s_p, &s_m));
-
 
                 if !gamma2.as_ref().unwrap().is_empty() {
                     // If current pair Sp/Sm is feasible, add the other branch
@@ -473,7 +473,7 @@ impl<'a> Iterator for NextLevelIterator<'a> {
                     let mut new_s_p = s_p.clone();
                     new_s_p.insert(next_marker);
                     new_s_m.remove(next_marker);
-					let mut new_markers = markers.clone();
+                    let mut new_markers = markers.clone();
                     new_markers.push(&self.expected_markers[depth]);
                     self.stack.push((new_s_p, new_s_m, new_markers));
                 } else {

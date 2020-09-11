@@ -1,11 +1,11 @@
 pub mod atom;
 
+use bit_set::BitSet;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::rc::Rc;
-use bit_set::BitSet;
 
 use super::mapping::Marker;
 
@@ -17,9 +17,9 @@ use super::mapping::Marker;
 //
 #[derive(Clone, Debug)]
 pub struct Automaton {
-    pub nb_states:   usize,
+    pub nb_states: usize,
     pub transitions: Vec<(usize, Rc<Label>, usize)>,
-    pub finals:      BitSet,
+    pub finals: BitSet,
 
     // Redundant caching structures
     adj: Vec<Vec<(Rc<Label>, usize)>>,
@@ -30,7 +30,7 @@ pub struct Automaton {
     rev_assignations: Vec<Vec<(Rc<Label>, usize)>>,
     closure_for_assignations: Vec<Vec<usize>>,
     closure_for_rev_assignations: Vec<Vec<usize>>,
-	jump_states: BitSet,
+    jump_states: BitSet,
 }
 
 impl Automaton {
@@ -52,7 +52,7 @@ impl Automaton {
             rev_assignations: Vec::new(),
             closure_for_assignations: Vec::new(),
             closure_for_rev_assignations: Vec::new(),
-			jump_states: BitSet::new(),
+            jump_states: BitSet::new(),
         };
 
         automaton.adj = automaton.init_adj();
@@ -60,13 +60,15 @@ impl Automaton {
         automaton.assignations = automaton.init_assignations();
         automaton.closure_for_assignations = automaton.init_closure_for_assignations();
         automaton.closure_for_rev_assignations = automaton.init_closure_for_rev_assignations();
-		automaton.jump_states = automaton.init_jump_states();
+        automaton.jump_states = automaton.init_jump_states();
 
         automaton
     }
 
     pub fn num_vars(&self) -> usize {
-        self.transitions.iter().fold(0, |acc, (_,x,_)| std::cmp::max(acc,x.get_marker().map(|m| m.get_id()).unwrap_or(0))) + 1
+        self.transitions.iter().fold(0, |acc, (_, x, _)| {
+            std::cmp::max(acc, x.get_marker().map(|m| m.get_id()).unwrap_or(0))
+        }) + 1
     }
 
     pub fn get_initial(&self) -> usize {
@@ -107,7 +109,7 @@ impl Automaton {
         self.rev_adj_for_char_with_closure.get(&x).unwrap()
     }
 
-    pub fn get_adj_for_char_with_closure(&mut self, x:char) -> &Vec<Vec<usize>> {
+    pub fn get_adj_for_char_with_closure(&mut self, x: char) -> &Vec<Vec<usize>> {
         let nb_states = self.get_nb_states();
         let adj_for_char = &mut self.adj_for_char;
         let transitions = &self.transitions;
@@ -149,10 +151,9 @@ impl Automaton {
                 sources.dedup();
             }
 
-            rev_adj_for_char_with_closure.insert(x,res_rev_closure);
+            rev_adj_for_char_with_closure.insert(x, res_rev_closure);
 
-            adj_for_char.insert(x,res);
-
+            adj_for_char.insert(x, res);
 
             res_closure
         })
@@ -227,9 +228,12 @@ impl Automaton {
 
         for (source, label, target) in &self.transitions {
             if let Label::Assignation(_) = **label {
-				if source > target {
-					panic!("Source must be smaller then target in transition ({},{},{})", source, label, target);
-				}
+                if source > target {
+                    panic!(
+                        "Source must be smaller then target in transition ({},{},{})",
+                        source, label, target
+                    );
+                }
                 adj[*source].push((label.clone(), *target))
             }
         }
@@ -283,7 +287,7 @@ impl Automaton {
     fn init_closure_for_rev_assignations(&self) -> Vec<Vec<usize>> {
         let closure_for_assignations = &self.closure_for_assignations;
         let mut rev_closure = vec![Vec::new(); self.get_nb_states()];
-        for (source,targets) in closure_for_assignations.iter().enumerate() {
+        for (source, targets) in closure_for_assignations.iter().enumerate() {
             for &target in targets {
                 rev_closure[target].push(source);
             }
@@ -292,16 +296,20 @@ impl Automaton {
         rev_closure
     }
 
-	pub fn get_jump_states(&self) -> &BitSet {
-		&self.jump_states
-	} 
-	
-	fn init_jump_states(&self) -> BitSet {
-		self.transitions.clone().into_iter().filter_map(|(_,l,q)| match *l {
-			Label::Assignation(_) => Some(q),
-			Label::Atom(_) => None
-		}).collect::<BitSet>()
-	}
+    pub fn get_jump_states(&self) -> &BitSet {
+        &self.jump_states
+    }
+
+    fn init_jump_states(&self) -> BitSet {
+        self.transitions
+            .clone()
+            .into_iter()
+            .filter_map(|(_, l, q)| match *l {
+                Label::Assignation(_) => Some(q),
+                Label::Atom(_) => None,
+            })
+            .collect::<BitSet>()
+    }
 }
 
 //  _          _          _

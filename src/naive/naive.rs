@@ -4,19 +4,18 @@ use std::str::CharIndices;
 use super::super::automaton::{Automaton, Label};
 use super::super::mapping::{Mapping, Marker, SpannerEnumerator};
 
-
 /// Enumerate all the matches of a variable automata over a text.
 ///
 /// ** For this naive implementation, the runtime and delay are only bounded by
 /// the number of accepting runs in the NFA. **
 pub struct NaiveEnum<'t> {
     automaton: &'t Automaton,
-    text:      &'t str,
+    text: &'t str,
 }
 
 pub struct NaiveEnumIterator<'t> {
     automaton: &'t Automaton,
-    text:      &'t str,
+    text: &'t str,
     num_vars: usize,
 
     /// Holds current positions of the runs as a stack of:
@@ -31,10 +30,7 @@ pub struct NaiveEnumIterator<'t> {
 
 impl<'t> NaiveEnum<'t> {
     pub fn new(automaton: &'t Automaton, text: &'t str) -> NaiveEnum<'t> {
-        NaiveEnum {
-            automaton,
-            text,
-        }
+        NaiveEnum { automaton, text }
     }
 }
 

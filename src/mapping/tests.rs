@@ -11,7 +11,9 @@ fn naive_results<'t>(regex: &Automaton, text: &'t str) -> HashSet<Mapping<'t>> {
 
 /// Build a HashSet collecting results of default algorithm.
 fn default_results<'t>(regex: &Automaton, text: &'t str) -> HashSet<Mapping<'t>> {
-    regex::compile_matches(regex.clone(), text, 1).iter().collect()
+    regex::compile_matches(regex.clone(), text, 1)
+        .iter()
+        .collect()
 }
 
 #[test]
@@ -68,14 +70,7 @@ fn mixed_emails() {
 #[test]
 fn some_utf8() {
     let regex = regex::compile(r"e{3}|ê{3}");
-    let texts = [
-        "êêeeeêê",
-        "êê",
-        "êêêêê",
-        "eêêêeêêêe",
-        "eeeêeee",
-        "eeeêêeee",
-    ];
+    let texts = ["êêeeeêê", "êê", "êêêêê", "eêêêeêêêe", "eeeêeee", "eeeêêeee"];
 
     for text in texts.into_iter() {
         assert_eq!(naive_results(&regex, text), default_results(&regex, text));

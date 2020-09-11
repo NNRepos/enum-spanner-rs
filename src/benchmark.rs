@@ -1,24 +1,27 @@
-use std::fs::File;
-use std::path::Path;
-use std::io::prelude::*;
-use std::time::Instant;
-use super::mapping::{SpannerEnumerator,indexed_dag::{IndexedDag,TrimmingStrategy}};
+use super::mapping::{
+    indexed_dag::{IndexedDag, TrimmingStrategy},
+    SpannerEnumerator,
+};
 use super::Algorithm;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 
-use super::regex;
 use super::naive;
+use super::regex;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BenchmarkCase {
-    name:     String,
-    comment:  String,
+    name: String,
+    comment: String,
     filename: String,
-    regex:    String,
+    regex: String,
     jump: Option<usize>,
     trimming: Option<TrimmingStrategy>,
-    length:   Option<u64>,
+    length: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -56,7 +59,9 @@ pub struct BenchmarkResult {
 }
 
 impl BenchmarkCase {
-    pub fn read_from_file(filename: &Path) -> Result<Vec<BenchmarkCase>,Box<dyn std::error::Error>> {
+    pub fn read_from_file(
+        filename: &Path,
+    ) -> Result<Vec<BenchmarkCase>, Box<dyn std::error::Error>> {
         let mut input = String::new();
 
         File::open(&filename)?.read_to_string(&mut input)?;
@@ -66,14 +71,25 @@ impl BenchmarkCase {
 
         if let Some(path) = path {
             for mut benchmark in &mut benchmarks {
-                benchmark.filename = path.join(benchmark.filename.clone()).to_str().unwrap().to_string();
+                benchmark.filename = path
+                    .join(benchmark.filename.clone())
+                    .to_str()
+                    .unwrap()
+                    .to_string();
             }
         }
 
         Ok(benchmarks)
     }
 
-    pub fn new(name: String, comment: String, filename: String, regex: String, jump: usize, trimming: TrimmingStrategy) -> BenchmarkCase {
+    pub fn new(
+        name: String,
+        comment: String,
+        filename: String,
+        regex: String,
+        jump: usize,
+        trimming: TrimmingStrategy,
+    ) -> BenchmarkCase {
         BenchmarkCase {
             name,
             comment,
@@ -85,7 +101,12 @@ impl BenchmarkCase {
         }
     }
 
-    fn measure_delays<'a>(&'a self, count_matches: usize, compiled_matches: &impl SpannerEnumerator<'a>, k: usize) -> Option<Delay> {
+    fn measure_delays<'a>(
+        &'a self,
+        count_matches: usize,
+        compiled_matches: &impl SpannerEnumerator<'a>,
+        k: usize,
+    ) -> Option<Delay> {
         if k == 0 {
             return None;
         }
@@ -95,14 +116,25 @@ impl BenchmarkCase {
         for _ in 0..k {
             let start_time = Instant::now();
             let mut times = Vec::with_capacity(count_matches);
-            let _ = compiled_matches.iter().map(|x| {
-                times.push(start_time.elapsed().subsec_nanos());
+            let _ = compiled_matches
+                .iter()
+                .map(|x| {
+                    times.push(start_time.elapsed().subsec_nanos());
 
-                x
-            }).count();
+                    x
+                })
+                .count();
 
             let mut last = 0;
-            let delay: Vec<u32> = times.iter().map(|&d| {let i = ((d + 1000000000) - last) % 1000000000; last = d; i}).skip(1).collect();
+            let delay: Vec<u32> = times
+                .iter()
+                .map(|&d| {
+                    let i = ((d + 1000000000) - last) % 1000000000;
+                    last = d;
+                    i
+                })
+                .skip(1)
+                .collect();
 
             delays.push(delay);
         }
@@ -114,24 +146,28 @@ impl BenchmarkCase {
 
         let mut temp: Vec<u32> = Vec::with_capacity(k);
 
-        let mean_delays: Vec<u32> = if count_matches == 0 {Vec::new()} else {
-            (0..count_matches-1).map(|_| {
-                temp.clear();
-                for iter in &mut iters {
-                    temp.push(*iter.next().unwrap());
-                }
+        let mean_delays: Vec<u32> = if count_matches == 0 {
+            Vec::new()
+        } else {
+            (0..count_matches - 1)
+                .map(|_| {
+                    temp.clear();
+                    for iter in &mut iters {
+                        temp.push(*iter.next().unwrap());
+                    }
 
-                *temp.iter().min().unwrap()
-            }).collect()
+                    *temp.iter().min().unwrap()
+                })
+                .collect()
         };
 
         let mean = stats::mean(mean_delays.iter().map(|&x| x));
         let stddev = stats::stddev(mean_delays.iter().map(|&x| x));
         let max: usize = *mean_delays.iter().max().unwrap_or(&0) as usize;
         let min = *mean_delays.iter().min().unwrap_or(&0);
-        let mut hist = vec![0;max/1000 + 1];
+        let mut hist = vec![0; max / 1000 + 1];
         for &i in &mean_delays {
-            hist[i as usize/1000]+=1;
+            hist[i as usize / 1000] += 1;
         }
 
         Some(Delay {
@@ -154,10 +190,14 @@ impl BenchmarkCase {
         let count_matches = enumerator.iter().count();
         let enumerate = timer.elapsed();
 
-        (count_matches, preprocess.as_nanos() as f64 / 1000000000.0, enumerate.as_nanos() as f64 / 1000000000.0)
+        (
+            count_matches,
+            preprocess.as_nanos() as f64 / 1000000000.0,
+            enumerate.as_nanos() as f64 / 1000000000.0,
+        )
     }
 
-    pub fn run(&self, algorithm: Algorithm, k: usize) -> Result<BenchmarkResult,std::io::Error> {
+    pub fn run(&self, algorithm: Algorithm, k: usize) -> Result<BenchmarkResult, std::io::Error> {
         let mut input = String::new();
         let trimming_strategy = match self.trimming {
             None => TrimmingStrategy::FullTrimming,
@@ -170,10 +210,12 @@ impl BenchmarkCase {
         };
 
         // Read input file content.
-        File::open(&self.filename)?.take(match self.length {
-            Some(l) => l,
-            None => std::u64::MAX,
-        }).read_to_string(&mut input)?;
+        File::open(&self.filename)?
+            .take(match self.length {
+                Some(l) => l,
+                None => std::u64::MAX,
+            })
+            .read_to_string(&mut input)?;
 
         // Compile the regex.
         let automaton = regex::compile(&self.regex);
@@ -182,12 +224,23 @@ impl BenchmarkCase {
 
         match algorithm {
             Algorithm::ICDT19 => {
-                let mut enumerator = IndexedDag::new(automaton, &input, jump_distance, trimming_strategy, false);
+                let mut enumerator =
+                    IndexedDag::new(automaton, &input, jump_distance, trimming_strategy, false);
                 let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
                 let delays = self.measure_delays(count_matches, &enumerator, k);
-                let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, width_max, width_avg) = enumerator.get_statistics().unwrap_or((0,0,0.0,0,0,0.0));
+                let (
+                    num_matrices,
+                    num_used_matrices,
+                    matrix_avg_size,
+                    matrix_max_size,
+                    width_max,
+                    width_avg,
+                ) = enumerator
+                    .get_statistics()
+                    .unwrap_or((0, 0, 0.0, 0, 0, 0.0));
                 let (create_dag, trim_dag, index_dag) = enumerator.get_times();
-                let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = enumerator.get_memory_usage().unwrap_or((0,0,0,0));
+                let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) =
+                    enumerator.get_memory_usage().unwrap_or((0, 0, 0, 0));
                 let num_levels = enumerator.num_levels().unwrap_or(0);
 
                 Ok(BenchmarkResult {
@@ -208,12 +261,12 @@ impl BenchmarkCase {
                     memory_matrices: matrices_mem,
                     memory_jump_level: jump_level_mem,
                     num_levels,
-                    create_dag: create_dag.map(|t| t.as_nanos() as f64/1000000000.0),
-                    trim_dag: trim_dag.map(|t| t.as_nanos() as f64/1000000000.0),
-                    index_dag: index_dag.map(|t| t.as_nanos() as f64/1000000000.0),
+                    create_dag: create_dag.map(|t| t.as_nanos() as f64 / 1000000000.0),
+                    trim_dag: trim_dag.map(|t| t.as_nanos() as f64 / 1000000000.0),
+                    index_dag: index_dag.map(|t| t.as_nanos() as f64 / 1000000000.0),
                     delays,
                 })
-            },
+            }
             Algorithm::Naive => {
                 let mut enumerator = naive::naive::NaiveEnum::new(&automaton, &input);
                 let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
@@ -225,7 +278,7 @@ impl BenchmarkCase {
                     num_results: count_matches,
                     num_matrices: 0,
                     num_used_matrices: 0,
-                    matrix_avg_size:0.0 ,
+                    matrix_avg_size: 0.0,
                     matrix_max_size: 0,
                     width_avg: 0.0,
                     width_max: 0,
@@ -242,9 +295,10 @@ impl BenchmarkCase {
                     trim_dag: None,
                     index_dag: None,
                 })
-            },
+            }
             Algorithm::NaiveQuadratic => {
-                let mut enumerator = naive::naive_quadratic::NaiveEnumQuadratic::new(&self.regex, &input);
+                let mut enumerator =
+                    naive::naive_quadratic::NaiveEnumQuadratic::new(&self.regex, &input);
                 let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
                 let delays = self.measure_delays(count_matches, &enumerator, k);
 
@@ -254,7 +308,7 @@ impl BenchmarkCase {
                     num_results: count_matches,
                     num_matrices: 0,
                     num_used_matrices: 0,
-                    matrix_avg_size:0.0 ,
+                    matrix_avg_size: 0.0,
                     matrix_max_size: 0,
                     width_avg: 0.0,
                     width_max: 0,
@@ -271,9 +325,10 @@ impl BenchmarkCase {
                     trim_dag: None,
                     index_dag: None,
                 })
-            },            
+            }
             Algorithm::NaiveCubic => {
-                let mut enumerator = naive::naive_cubic::NaiveEnumCubic::new(&self.regex, &input).unwrap();
+                let mut enumerator =
+                    naive::naive_cubic::NaiveEnumCubic::new(&self.regex, &input).unwrap();
                 let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
                 let delays = self.measure_delays(count_matches, &enumerator, k);
 
@@ -283,7 +338,7 @@ impl BenchmarkCase {
                     num_results: count_matches,
                     num_matrices: 0,
                     num_used_matrices: 0,
-                    matrix_avg_size:0.0 ,
+                    matrix_avg_size: 0.0,
                     matrix_max_size: 0,
                     width_avg: 0.0,
                     width_max: 0,
@@ -300,11 +355,7 @@ impl BenchmarkCase {
                     trim_dag: None,
                     index_dag: None,
                 })
-            },            
+            }
         }
-
-    }   
+    }
 }
-
-
-
