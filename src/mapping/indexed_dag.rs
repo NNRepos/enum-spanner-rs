@@ -103,7 +103,7 @@ impl<'t> IndexedDag<'t> {
         self.jump.as_ref().map(|j| j.get_memory_usage())
     }
 
-    pub fn get_statistics(&self) -> Option<(usize, usize, f64, usize, f64, usize, f64)> {
+    pub fn get_statistics(&self) -> Option<(usize, usize, f64, usize, usize, f64)> {
 		self.jump.as_ref().map(|j| j.get_statistics())
 	}
 }

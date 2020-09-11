@@ -52,7 +52,6 @@ pub struct BenchmarkResult {
     num_used_matrices: usize,
     matrix_avg_size: f64,
     matrix_max_size: usize,
-    matrix_avg_density: f64,
     num_levels: usize,
 }
 
@@ -186,7 +185,7 @@ impl BenchmarkCase {
                 let mut enumerator = IndexedDag::new(automaton, &input, jump_distance, trimming_strategy, false);
                 let (count_matches, preprocess, enumerate) = self.measure(&mut enumerator);
                 let delays = self.measure_delays(count_matches, &enumerator, k);
-                let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, width_max, width_avg) = enumerator.get_statistics().unwrap_or((0,0,0.0,0,0.0,0,0.0));
+                let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, width_max, width_avg) = enumerator.get_statistics().unwrap_or((0,0,0.0,0,0,0.0));
                 let (create_dag, trim_dag, index_dag) = enumerator.get_times();
                 let (dag_mem_max, dag_mem, matrices_mem, jump_level_mem) = enumerator.get_memory_usage().unwrap_or((0,0,0,0));
                 let num_levels = enumerator.num_levels().unwrap_or(0);
@@ -199,7 +198,6 @@ impl BenchmarkCase {
                     num_used_matrices,
                     matrix_avg_size,
                     matrix_max_size,
-                    matrix_avg_density,
                     width_avg,
                     width_max,
                     preprocess,
@@ -229,7 +227,6 @@ impl BenchmarkCase {
                     num_used_matrices: 0,
                     matrix_avg_size:0.0 ,
                     matrix_max_size: 0,
-                    matrix_avg_density: 0.0,
                     width_avg: 0.0,
                     width_max: 0,
                     preprocess,
@@ -259,7 +256,6 @@ impl BenchmarkCase {
                     num_used_matrices: 0,
                     matrix_avg_size:0.0 ,
                     matrix_max_size: 0,
-                    matrix_avg_density: 0.0,
                     width_avg: 0.0,
                     width_max: 0,
                     preprocess,
@@ -289,7 +285,6 @@ impl BenchmarkCase {
                     num_used_matrices: 0,
                     matrix_avg_size:0.0 ,
                     matrix_max_size: 0,
-                    matrix_avg_density: 0.0,
                     width_avg: 0.0,
                     width_max: 0,
                     preprocess,

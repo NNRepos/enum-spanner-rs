@@ -397,20 +397,20 @@ impl Jump {
 		self.last_level_was_jump_target = true;
     }
 
-	pub fn get_statistics(&self) -> (usize, usize, f64, usize, f64, usize, f64) {
-		let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density) = self.get_matrix_stats();
+	pub fn get_statistics(&self) -> (usize, usize, f64, usize, usize, f64) {
+		let (num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size) = self.get_matrix_stats();
 
-		(num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, matrix_avg_density, self.get_max_width(), self.get_avg_width())
+		(num_matrices, num_used_matrices, matrix_avg_size, matrix_max_size, self.get_max_width(), self.get_avg_width())
 	}
 
-	fn get_matrix_stats(&self) -> (usize, usize, f64, usize, f64) {
-		let (count, used_count, total_size, max_size, count_ones) = MatrixIterator::init(self).fold((0,0,0,0,0), |(count, used_count, total_size, max_size, count_ones), x| {
+	fn get_matrix_stats(&self) -> (usize, usize, f64, usize) {
+		let (count, used_count, total_size, max_size) = MatrixIterator::init(self).fold((0,0,0,0), |(count, used_count, total_size, max_size), x| {
 			let size = x.get_width() * x.get_height();
 
-			(count + 1, used_count + if x.get_usage_count()>0 {1} else {0}, total_size + size, std::cmp::max(max_size, size), count_ones + x.count_ones())
+			(count + 1, used_count + if x.get_usage_count()>0 {1} else {0}, total_size + size, std::cmp::max(max_size, size))
 		} );
 
-		(count, used_count, total_size as f64 / count as f64, max_size as usize, count_ones as f64 / total_size as f64)
+		(count, used_count, total_size as f64 / count as f64, max_size as usize)
 	}
 
 	fn get_max_width(&self) -> usize {

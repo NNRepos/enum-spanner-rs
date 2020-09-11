@@ -212,10 +212,6 @@ impl<'a> Matrix
 		self.usage_count.get() as usize
 	}
 
-	pub fn count_ones(&self) -> usize {
-		0 //self.data.iter().filter(|&x| x).count()
-	}
-
 	pub fn get_memory_usage(&self) -> usize {
 		let (_padded_width,size) = self.get_width_and_size();
 
