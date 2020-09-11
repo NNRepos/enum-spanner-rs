@@ -63,10 +63,6 @@ where
         self
     }
 
-    pub fn extra_msg(&mut self, msg: String) {
-        self.extra_msg = Some(msg);
-    }
-
     pub fn refresh(&mut self) {
         // Compute bar shape
         let proportion = self.count_iterations as f64 / self.max_iterations as f64;
