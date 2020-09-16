@@ -1,0 +1,66 @@
+[
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTACGG.{0,1000}CACCTG",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTACGG.{0,1000}CACCT",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTACG.{0,1000}CACCT",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTACG.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACG",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CAC",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTA.{0,1000}CAC",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "Close DNA (growing fragment length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTA.{0,1000}CA",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  }
+]

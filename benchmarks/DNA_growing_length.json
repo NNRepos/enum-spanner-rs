@@ -1,0 +1,242 @@
+[
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 100000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 200000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 300000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 400000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 500000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 600000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 700000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 800000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 900000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 1000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 2000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 3000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 4000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 5000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 6000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 7000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 8000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 9000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 10000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 20000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 30000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 40000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 50000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 60000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 70000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 80000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 90000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 100000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 200000000
+  },
+  {
+    "name": "DNA (distance 1000, growing length)",
+    "comment": "Find two substrings of a DNA sequence that are close from one another.",
+    "filename": "chromosome-1",
+    "regex": "TTAC.{0,1000}CACC",
+    "trimming": "FullTrimming",
+    "length": 248956422
+  }
+]
