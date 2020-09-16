@@ -41,8 +41,18 @@ The statistics are written to stdout. You probably want to redirect the output t
 
 Format
 ------
-The json file consists of a set of benchmark objects, each object containts the
-strings name and comment (these have no impact on the algorithm), the filename (relative filenames are evaluated according to the cwd) containing the document, and the regex formula. Optionally they can contain a length, in wich case the query is restricted to the first length bytes and a trimming attribute that controls whether the DAG shall be trimmed prior to enumeration or not.
+The json file consists of a set of benchmark objects, with the following fields:
+
+| field | description |
+| ----- | ----------- |
+| name | used for reference purposes and has no impact on the benchmark |
+| comment | allows for a human readbale description. has no impact on benchmark |
+| filename | filename of the input document |
+| regex | regular expression, i.e., the query |
+| trimming | Whether the DAG is trimmed or not |
+| length | Optional. If present only the first n bytes of the input file are used |
+  
+The possible values for trimment are currently only FullTrimming and NoTrimming.
 
 The output format likewise contains a set of benchmark-result objects. Each of these contain the processed benchmark object (for reference) and a bunch of statistics.
 The meaning of the fields are:
@@ -66,7 +76,6 @@ The meaning of the fields are:
 | num\_matrices | total number of stored matrices |
 | matrix\_avg\_size | average matrix size (width \* height) |
 | matrix\_max\_size | maximal matrix size (width \* height) |
-| matrix\_avg\_density | TODO |
 | num\_levels | number of levels that are in hte image of the jump function |
 
 All times are given in seconds, all memory allocations in bytes. This is not the actual amount of memory needed, but a sum over the allocations made. It does not include stack, program code, or overhead of the allocator. Also the space requirements are for the final data structure. Right now, additional memory is needed to store the input string in memory and to represent the non-trimmed DAG. Especially the latter can be of considerable size, as it uses number of states in the automaton times length of the input string many bits.
