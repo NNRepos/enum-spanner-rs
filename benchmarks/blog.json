@@ -1,0 +1,121 @@
+[
+  {
+    "name": "Span Extractor ACTION",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<action>[Ss]aw|[Ww]atch|[Rr]ent)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor ASPECT",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<aspect>visual|plot|script|dialogue|acting|actors|cast|special|effect|shot|scene|sequence)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor ATTRIBUTE",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<attribute>funny|better|worst|worse|awful|boring|entertaining|inspiring|clever|interesting|smart|cool|dope|quirky|hilarious|amazing|well[- ]done|rushed)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor GENRE",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<genre>action|adventure|children|family|comedy|crime|documentary|drama|fantasy|noir|horror|musical|mystery|romance|sci-fi|science fiction|thriller|war|western|gangster|epic|historical)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor NAME",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<name>[[:upper:]][[:alpha]]* [[:upper:]][[:alpha:]]*[[:punct:] ])",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor ROLE",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<role>protagonist|characters?|director|actor|role|critics)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor SENTIMENT",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<sentiment>loved|liked|hate|enjoy|cringe|cry|cried|recommend|laugh)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor MOVIE",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<movie>movie|flick|film|feature|dvd)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor TITLE",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<title>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"])",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q1",
+    "comment": "Evaluate Spaners on Blog corpus. Action <=10 Title",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<action>[Ss]aw|[Ww]atch|[Rr]ent).{0,10}(?P<title>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"])",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q2",
+    "comment": "Evaluate Spaners on Blog corpus. Attribute <=60 Movie",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<attribute>funny|better|worst|worse|awful|boring|entertaining|inspiring|clever|interesting|smart|cool|dope|quirky|hilarious|amazing|well[- ]done|rushed).{0,60}(?P<movie>movie|flick|film|feature|dvd)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q3",
+    "comment": "Evaluate Spaners on Blog corpus. Genre <=60 Movie",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<genre>action|adventure|children|family|comedy|crime|documentary|drama|fantasy|noir|horror|musical|mystery|romance|sci-fi|science fiction|thriller|war|western|gangster|epic|historical).{0,60}(?P<movie>movie|flick|film|feature|dvd)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q4",
+    "comment": "Evaluate Spaners on Blog corpus. Movie <=10 Title",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<movie>movie|flick|film|feature|dvd).{0,10}(?P<title>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"])",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q5",
+    "comment": "Evaluate Spaners on Blog corpus. Q1 U Q2 U Role <=40 Name",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<action>[Ss]aw|[Ww]atch|[Rr]ent).{0,10}(?P<title>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"])|(?P<attribute>funny|better|worst|worse|awful|boring|entertaining|inspiring|clever|interesting|smart|cool|dope|quirky|hilarious|amazing|well[- ]done|rushed).{0,60}(?P<movie>movie|flick|film|feature|dvd)|(?P<role>protagonist|characters?|director|actor|role|critics).{0,40}(?P<name>[[:upper:]][[:alpha]]* [[:upper:]][[:alpha:]]*[[:punct:] ])",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q6'",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<action>[Ss]aw|[Ww]atch|[Rr]ent).{0,10}(?P<title>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"])|((?P<genre>action|adventure|children|family|comedy|crime|documentary|drama|fantasy|noir|horror|musical|mystery|romance|sci-fi|science fiction|thriller|war|western|gangster|epic|historical)|(?P<sentiment>loved|liked|hate|enjoy|cringe|cry|cried|recommend|laugh)).{0,60}(?P<movie>movie|flick|film|feature|dvd)|(?P<role>protagonist|characters?|director|actor|role|critics).{0,40}(?P<name>[[:upper:]][[:alpha]]* [[:upper:]][[:alpha:]]*[[:punct:] ])|(?P<aspect>visual|plot|script|dialogue|acting|actors|cast|special|effect|shot|scene|sequence).{0,40}(?P<attribute>funny|better|worst|worse|awful|boring|entertaining|inspiring|clever|interesting|smart|cool|dope|quirky|hilarious|amazing|well[- ]done|rushed)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q7'",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<action>[Ss]aw|[Ww]atch|[Rr]ent).{0,10}(?P<title>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"])|((?P<genre>action|adventure|children|family|comedy|crime|documentary|drama|fantasy|noir|horror|musical|mystery|romance|sci-fi|science fiction|thriller|war|western|gangster|epic|historical)|(?P<sentiment>loved|liked|hate|enjoy|cringe|cry|cried|recommend|laugh)).{0,60}(?P<movie>movie|flick|film|feature|dvd)|(?P<role>protagonist|characters?|director|actor|role|critics).{0,40}(?P<name>[[:upper:]][[:alpha]]* [[:upper:]][[:alpha:]]*[[:punct:] ])|(?P<aspect>visual|plot|script|dialogue|acting|actors|cast|special|effect|shot|scene|sequence).{0,40}(?P<attribute>funny|better|worst|worse|awful|boring|entertaining|inspiring|clever|interesting|smart|cool|dope|quirky|hilarious|amazing|well[- ]done|rushed)|(?P<title__2>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"]).{0,60}(?P<plotClue>plot|about|tell|story|revolves|begins|ending|ends|finally|final|beginning|middle)",
+    "trimming": "FullTrimming"
+  },
+  {
+    "name": "Span Extractor Q8'",
+    "comment": "Evaluate Spaners on Blog corpus.",
+    "filename": "blog-corpus-ascii",
+    "regex": "(?P<action>[Ss]aw|[Ww]atch|[Rr]ent).{0,10}(?P<title>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"])|((?P<genre>action|adventure|children|family|comedy|crime|documentary|drama|fantasy|noir|horror|musical|mystery|romance|sci-fi|science fiction|thriller|war|western|gangster|epic|historical)|(?P<sentiment>loved|liked|hate|enjoy|cringe|cry|cried|recommend|laugh)).{0,60}(?P<movie>movie|flick|film|feature|dvd)|(?P<role>protagonist|characters?|director|actor|role|critics).{0,40}(?P<name>[[:upper:]][[:alpha]]* [[:upper:]][[:alpha:]]*[[:punct:] ])|((?P<aspect>visual|plot|script|dialogue|acting|actors|cast|special|effect|shot|scene|sequence)|(?P<name__2>[[:upper:]][[:alpha]]* [[:upper:]][[:alpha:]]*[[:punct:] ])).{0,40}(?P<attribute>funny|better|worst|worse|awful|boring|entertaining|inspiring|clever|interesting|smart|cool|dope|quirky|hilarious|amazing|well[- ]done|rushed)|(?P<title__2>['\"][[:alnum:]]+( [[:alnum:]]*){0,4}['\"]).{0,60}(?P<plotClue>plot|about|tell|story|revolves|begins|ending|ends|finally|final|beginning|middle)",
+    "trimming": "FullTrimming"
+  }
+]
