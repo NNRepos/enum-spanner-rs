@@ -12,12 +12,12 @@ Our benchmark results used the first chromosome of the human reference genome [G
 
 Similar results can be achieved by creating the file chromosome-1 with a 250 MB random string over the alphabet ACGT. 
 
-The blog benchmarks are described in the [master thesis of Andrea Morciano](https://www.politesi.polimi.it/bitstream/10589/135034/1/2017_07_Morciano.pdf). The blog corpus can be found [here](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm). It needs to be extracted, all files concateneted into one file blog-corpus, and invalid unicode encodings needs to be repaired or removed. As the dictionary mathcers in the queries do not use any non-ascii symbols, one can simply remove all non-ascii characters. The process is automated in the script dowload\_blog\_data.sh
+The blog benchmarks are described in the [master thesis of Andrea Morciano](https://www.politesi.polimi.it/bitstream/10589/135034/1/2017_07_Morciano.pdf). The blog corpus can be found [here](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm). It needs to be extracted, all files concateneted into one file blog-corpus, and invalid unicode encodings needs to be repaired or removed. As the dictionary mathcers in the queries do not use any non-ascii symbols, one can simply remove all non-ascii characters. The process is automated in the script download\_blog\_data.sh
 
 List of Benchmarks
 ------------------
 | file name | Regex | description |
-| --------- | Regex | ----------- |
+| --------- | ----- | ----------- |
 | DNA\_arbitrary\_distance.json | TTAC.\*CACC       | Search for two DNA patterns in arbitrary distance |
 | DNA\_growing\_distance.json   | TTAC.{0,k}CACC    | Search for two DNA patterns with distance at most k (10 <= k <= 10000) |
 | DNA\_growing\_fragment.json   | w1.{0,1000}w2     | Search for two DNA patterns w1 and w2 with distance at most 1000. The lengths of the fragments varies.|
