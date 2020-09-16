@@ -8,15 +8,26 @@ Requirements
 ------------
 Most of the benchmarks need additional data. All benchmarks prefixed with dna require
 DNA data (strings using the alphabet ACGT). We provide a small file with example data.
-Our benchmark results used the first chromosome of the human genome TODO:link.
+Our benchmark results used the first chromosome of the human reference genome [GRCh38](https://www.ncbi.nlm.nih.gov/genome/guide/human/). In order to directly apply our benchmarks, the data needs to be unzipped, the line breaks need to be removed and all characters have to be chnaged to uppercase. The script download\_dna.sh does all these steps on a Linux machine. 
 
-Similar results can be achieved by just using 2500 copies of dna.txt in a single file (for the largest benchmarks).
+Similar results can be achieved by creating the file chromosome-1 with a 250 MB random string over the alphabet ACGT. 
 
-The blog benchmarks are TODO
+The blog benchmarks are described in the [master thesis of Andrea Morciano](https://www.politesi.polimi.it/bitstream/10589/135034/1/2017_07_Morciano.pdf). The blog corpus can be found [here](http://u.cs.biu.ac.il/~koppel/BlogCorpus.htm). It needs to be extracted, all files concateneted into one file blog-corpus, and invalid unicode encodings needs to be repaired or removed. As the dictionary mathcers in the queries do not use any non-ascii symbols, one can simply remove all non-ascii characters. The process is automated in the script dowload\_blog\_data.sh
+
+List of Benchmarks
+------------------
+| file name | Regex | description |
+| --------- | Regex | ----------- |
+| DNA\_arbitrary\_distance.json | TTAC.\*CACC       | Search for two DNA patterns in arbitrary distance |
+| DNA\_growing\_distance.json   | TTAC.{0,k}CACC    | Search for two DNA patterns with distance at most k (10 <= k <= 10000) |
+| DNA\_growing\_fragment.json   | w1.{0,1000}w2     | Search for two DNA patterns w1 and w2 with distance at most 1000. The lengths of the fragments varies.|
+| DNA\_growing\_length.json     | TTAC.{0,1000}CACC | Search for two DNA patterns with distance 1000. The length of the input string varies. |
+| blog.json | | Queries from the master thesis of Andrea Morciano |
+
 
 RAM-Usage
 ---------
-The final size of our data structure depends a lot on the size of the automaton and the number of results. However, during preprocessing we create a BITMAP of which states in the product from the automaton and the document are reachable. By construction its size in bits is number of states of the automatom times size of the input. The largests benchmarks need roughly 30 GB of free RAM to run.
+The final size of our data structure depends a lot on the size of the automaton and the number of results. However, during preprocessing we create a BITMAP of which states in the product from the automaton and the document are reachable. By construction its size in bits is number of states of the automatom times size of the input. The benchmark DNA\_growing\_length needs roughly 30 GB of free RAM to run. All other benchmarks use at most a few GB.
 
 Usage
 -----
@@ -25,7 +36,7 @@ Usage
 cargo run --release -- --benchmark-file [file] 
 ```
 
-The statistics are written to stdout. You probably want to redirect the output to a file.
+The statistics are written to stdout. You probably want to redirect the output to a file for further processing.
 
 
 Format
@@ -73,4 +84,13 @@ If there are many results, collecting this statistics can use a considerable amo
 
 The histogram field contains an array, where the first entry corresponds to how many results hat a delay (measured from the output of the previous results) smaller than one microsecond. The next entry says how many results had a delay betweeen one and two microseconds and so on.
 
+Extracting Data
+---------------
+Data can be extracted from the output either manually or with JSON query tools. 
+The tool [jq](https://stedolan.github.io/jq/) can be used from the command line.
+
+Example: extract pairs of document length and preprocessing speed (in bytes/s):
+```bash
+jq '[.[] | [.benchmark.length,.benchmark.length/.preprocess]]'
+```
 
