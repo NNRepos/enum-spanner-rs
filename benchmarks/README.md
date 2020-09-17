@@ -2,10 +2,13 @@ Benchmarks
 ==========
 
 The json-files in this folder are predefined benchmarks that were used to test
-the performance of this implementation.
+the performance of this implementation. This readme explains how to download the
+data needed for the example benchmarks, how to run the benchmarks, the format of the
+json files describing the benchmarks, the format of the json objects describing the benchmark results, and how to extract data from the benchmark results.
 
-Requirements
-------------
+
+Downloading and Preparing the Data
+----------------------------------
 Most of the benchmarks need additional data. All benchmarks prefixed with dna require
 DNA data (strings using the alphabet ACGT). We provide a small file with example data.
 Our benchmark results used the first chromosome of the human reference genome [GRCh38](https://www.ncbi.nlm.nih.gov/genome/guide/human/). In order to directly apply our benchmarks, the data needs to be unzipped, the line breaks need to be removed and all characters have to be chnaged to uppercase. The script download\_dna.sh does all these steps on a Linux machine. 
@@ -52,7 +55,7 @@ The json file consists of a set of benchmark objects, with the following fields:
 | trimming | Whether the DAG is trimmed or not |
 | length | Optional. If present only the first n bytes of the input file are used |
   
-The possible values for trimment are currently only FullTrimming and NoTrimming.
+The possible values for trimming are currently only FullTrimming and NoTrimming.
 
 The output format likewise contains a set of benchmark-result objects. Each of these contain the processed benchmark object (for reference) and a bunch of statistics.
 The meaning of the fields are:
@@ -80,10 +83,11 @@ The meaning of the fields are:
 
 All times are given in seconds, all memory allocations in bytes. This is not the actual amount of memory needed, but a sum over the allocations made. It does not include stack, program code, or overhead of the allocator. Also the space requirements are for the final data structure. Right now, additional memory is needed to store the input string in memory and to represent the non-trimmed DAG. Especially the latter can be of considerable size, as it uses number of states in the automaton times length of the input string many bits.
 
-The detailed analysis of delays is only available if the optional --repetitions <num> parameter is used. The parameter gives the numebr of times, the enumeration part should be performed. During each path, every delay is stored in memory. After <num> passes, for every produced results, there are <num> delay measurements, where the median is taken. Using this median, the following statistics are computed. If there is only one repetition, there will be some outliers, e.g., due to interrupt processing. Note that delays due to interrupts can be several order of magnitude larger than all delays encoutered due to the algorithm. Thus to evaluate the algorithm (and not the whole system performance), there should be a few repetitions. For our own analysis we took 10 repetitions, but your mileage may vary.
+The detailed analysis of delays is only available if the optional --repetitions <num> parameter is used. The parameter gives the number of times, the enumeration part should be performed. During each path, every delay is stored in memory. After <num> passes, for every produced results, there are <num> delay measurements. We take the median of these <num> measurements to compute the statistics in the table below. If there is only one repetition, there will be some outliers, e.g., due to interrupt processing. Note that delays due to interrupts can be several order of magnitude larger than all delays encoutered due to the algorithm. Thus to evaluate the algorithm (and not the whole system performance), there should be a few repetitions. For our own analysis we took 10 repetitions, but your mileage may vary.
 
-If there are many results, collecting this statistics can use a considerable amount of RAM.
+If there are many results, collecting these statistics requires a considerable amount of RAM.
 
+This are the fields of the delay object:
 | field | description |
 | ----- | ----------- |
 | delay\_min | minimal time between two results |
@@ -91,7 +95,7 @@ If there are many results, collecting this statistics can use a considerable amo
 | delay\_avg | average time between two results |
 | delay\_hist | delay histogram (see explanation below) |
 
-The histogram field contains an array, where the first entry corresponds to how many results hat a delay (measured from the output of the previous results) smaller than one microsecond. The next entry says how many results had a delay betweeen one and two microseconds and so on.
+The histogram field contains an array, where the first entry corresponds to how many results had a delay (measured from the output of the previous results) smaller than one microsecond. The next entry says how many results had a delay betweeen one and two microseconds and so on.
 
 Extracting Data
 ---------------
