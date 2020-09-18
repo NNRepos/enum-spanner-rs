@@ -29,12 +29,6 @@ Run benchmarks. This will several hours in total:
 
 If all goes well, this will create a results folder, with the output from the benchmarks. For details on the format see below.
 
-Extract some meaningful data:
-
-TODO
-
-
-
 
 
 Detailed Explanations
