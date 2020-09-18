@@ -24,10 +24,18 @@ website](https://www.rust-lang.org/learn/get-started).
 
 Specific library requirements can be found in *Cargo.toml* and *Cargo.lock*.
 
+Batch Usage
+-----------
+
+The program can be used to run some benchmarks in an automated fashion. Please
+refer to the [benchmarks](https://github.com/PoDMR/enum-spanner-rs/tree/master/benchmarks)
+folder for details.
+
 Usage
 -----
 
-The quickest way is to run the program through Cargo.
+The program can also be run manually via Cargo by specifying a regular
+expression with captures on the command line.
 
 ```bash
 # Display all occurences of a pattern (regexp) in a file
