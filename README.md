@@ -64,6 +64,15 @@ The tool supports the same syntax as the Rust's regex crate, which is specified
 [here](https://docs.rs/regex/1.1.6/regex/#syntax), except for **anchors, which
 are not implemented yet**.
 
+Experimental Evaluation
+-----------------------
+
+Details about how to run the experiments that we use to validate our approach
+are given in the
+[benchmarks](https://github.com/PoDMR/enum-spanner-rs/tree/master/benchmarks)
+folder.
+
+
 Underlying Algorithm
 --------------------
 
