@@ -2,12 +2,6 @@
 
 BENCHMARKS="DNA_arbitrary_distance DNA_growing_distance DNA_growing_fragment DNA_growing_length.json blog"
 
-# Download DNA data
-# ./download_dna.sh
-
-# Download blgo data
-# ./download_blog_data.sh
-
 # create directory for results
 mkdir results
 
