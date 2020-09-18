@@ -7,6 +7,40 @@ data needed for the example benchmarks, how to run the benchmarks, the format of
 json files describing the benchmarks, the format of the json objects describing the benchmark results, and how to extract data from the benchmark results.
 
 
+Tutorial
+========
+Download the data necessary for the benchmarks:
+```bash
+# download dna data
+./download_dna.sh
+
+# download blog data
+./download_blog_data.sh
+```
+
+This should create files chromosome-1 (size 248.956.422 bytes) and blog-corpus-ascii (size 803.619.661). 
+The scripts need standard unix utilities (wget, gzip, unzip, head, tail, tr) to extract and format the data.
+If there are problems see below for details on how to prepare the data manually.
+
+Run benchmarks. This will several hours in total:
+```bash
+./run_benchmarks.sh
+```
+
+If all goes well, this will create a results folder, with the output from the benchmarks. For details on the format see below.
+
+Extract some meaningful data:
+
+TODO
+
+
+
+
+
+Detailed Explanations
+=====================
+
+
 Downloading and Preparing the Data
 ----------------------------------
 Most of the benchmarks need additional data. All benchmarks prefixed with dna require
