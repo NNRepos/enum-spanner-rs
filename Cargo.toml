@@ -5,7 +5,7 @@ authors = ["Rémi Dupré <remim.dupre@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-memchr = "2.3.4"
+memchr = "2.3.*"
 clap = "2.33"
 regex = "1"
 regex-syntax = "0.6"
